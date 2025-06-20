@@ -1,0 +1,30 @@
+[
+  {
+    "id": "4914ae2b-844b-4443-81af-941b7b4a2277",
+    "from_email": "allwin@gmail.com",
+    "from_service": "gmail",
+    "to": [
+      "lokhesh@gmail.com"
+    ],
+    "cc": [],
+    "bcc": [],
+    "subject": "Test pp",
+    "body": "Is it working?",
+    "timestamp": "2025-06-19T12:40:11.672033",
+    "read_by": []
+  },
+  {
+    "id": "8a1eb1d8-1f28-4eea-84d4-47582f865b7b",
+    "from_email": "lokhesh@gmail.com",
+    "from_service": "gmail",
+    "to": [
+      "allwin@gmail.com"
+    ],
+    "cc": [],
+    "bcc": [],
+    "subject": "Test pp success",
+    "body": "Yes it works ",
+    "timestamp": "2025-06-19T12:42:05.819447",
+    "read_by": []
+  }
+]
