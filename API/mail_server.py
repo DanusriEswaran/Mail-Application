@@ -1,13 +1,16 @@
 import json
 import hashlib
+from unittest import result
 import uuid
-import os
+import re
 from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import threading
 import time
 from pathlib import Path
+from flask import sessions
+import traceback
 
 # Data storage setup
 DATA_DIR = Path("mail_data")
@@ -17,12 +20,11 @@ USERS_FILE = DATA_DIR / "users.json"
 EMAILS_FILE = DATA_DIR / "emails.json"
 SESSIONS_FILE = DATA_DIR / "sessions.json"
 
-# Initialize data files
 for file_path in [USERS_FILE, EMAILS_FILE, SESSIONS_FILE]:
     if not file_path.exists():
         file_path.write_text("[]")
 
-# Supported email services
+
 SUPPORTED_SERVICES = {
     "gmail": {"name": "Gmail", "domain": "gmail.com", "description": "Google Mail Service"},
     "hotmail": {"name": "Hotmail", "domain": "hotmail.com", "description": "Microsoft Hotmail"},
@@ -33,419 +35,239 @@ SUPPORTED_SERVICES = {
 
 class MailService:
     def __init__(self):
-        self.cleanup_thread = threading.Thread(target=self.cleanup_expired_sessions, daemon=True)
-        self.cleanup_thread.start()
-    
-    def load_json_file(self, file_path):
-        try:
-            with open(file_path, 'r') as f:
-                return json.load(f)
-        except:
-            return []
-    
-    def save_json_file(self, file_path, data):
-        with open(file_path, 'w') as f:
-            json.dump(data, f, indent=2, default=str)
-    
-    def hash_password(self, password):
+        threading.Thread(target=self.cleanup_expired_sessions, daemon=True).start()
+
+    def _load(self, path): 
+        try: return json.load(open(path))
+        except: return []
+
+    def _save(self, path, data): 
+        json.dump(data, open(path, 'w'), indent=2, default=str)
+
+    def _hash(self, password): 
         return hashlib.sha256(password.encode()).hexdigest()
-    
-    def verify_password(self, password, hashed):
-        return self.hash_password(password) == hashed
-    
-    def generate_token(self):
+
+    def _token(self): 
         return str(uuid.uuid4())
-    
-    def validate_email(self, email):
-        return "@" in email and "." in email.split("@")[1]
-    
-    def get_user_by_token(self, token):
-        if not token:
+
+    def _validate_email(self, email):
+        pattern = r'^[\w\.-]+@[\w\.-]+\.\w{2,}$'
+        if re.match(pattern, email):
+            return True 
+        else:
+            return False
+
+    def _get_user_by_token(self, token):
+        if not token: return None
+        sessions = self._load(SESSIONS_FILE)
+        session = None
+        for s in sessions:
+            if s["token"] == token:
+                session = s
+                break
+            else:
+                return None
+        expiry_time = datetime.fromisoformat(session["expires_at"])
+        current_time = datetime.now()
+        if current_time > expiry_time:
+            active_sessions = [s for s in sessions if s["token"] != token]
+            self._save(SESSIONS_FILE, active_sessions)
             return None
-        
-        sessions = self.load_json_file(SESSIONS_FILE)
-        session = next((s for s in sessions if s["token"] == token), None)
-        
-        if not session:
-            return None
-        
-        # Check expiration
-        expires_at = datetime.fromisoformat(session["expires_at"]) 
-        if datetime.now() > expires_at:
-            # Remove expired session
-            sessions = [s for s in sessions if s["token"] != token]
-            self.save_json_file(SESSIONS_FILE, sessions)
-            return None
-        
-        users = self.load_json_file(USERS_FILE)
-        return next((u for u in users if u["email"] == session["email"]), None)
-    
+        users = self._load(USERS_FILE)
+        user = next((u for u in users if u["email"] == session["email"]), None)
+        return user
+
     def cleanup_expired_sessions(self):
         while True:
-            time.sleep(3600)  # Check every hour
-            sessions = self.load_json_file(SESSIONS_FILE)
-            now = datetime.now()
-            active_sessions = []
-            
+            time.sleep(3600)
+            sessions = self._load(SESSIONS_FILE)
+            valid_sessions = []
             for session in sessions:
                 expires_at = datetime.fromisoformat(session["expires_at"])
-                if now <= expires_at:
-                    active_sessions.append(session)
-            
-            self.save_json_file(SESSIONS_FILE, active_sessions)
-    
+                if expires_at > datetime.now():
+                    valid_sessions.append(session)
+            self._save(SESSIONS_FILE, valid_sessions)
+
     def register_user(self, data):
-        print("Arrived")
-        users = self.load_json_file(USERS_FILE)
-        
-        # Validate required fields
-        required_fields = ["username", "email", "password", "service"]
-        for field in required_fields:
-            if field not in data or not data[field]:
-                return {"error": f"Missing required field: {field}", "status": 400}
-        
-        # Validate email format
-        if not self.validate_email(data["email"]):
-            return {"error": "Invalid email format", "status": 400}
-        
-        # Check if user exists
-        if any(u["email"] == data["email"] for u in users):
-            return {"error": "User already exists", "status": 400}
-        
-        # Validate service
-        if data["service"] not in SUPPORTED_SERVICES:
-            return {"error": "Unsupported email service", "status": 400}
-        
-        # Create user
-        new_user = {
-            "id": str(uuid.uuid4()),
-            "username": data["username"],
-            "email": data["email"],
-            "password": self.hash_password(data["password"]),
-            "service": data["service"],
-            "full_name": data.get("full_name", ""),
-            "created_at": datetime.now().isoformat(),
-            "is_active": True
+        users = self._load(USERS_FILE)
+        for field in ["username", "email", "password", "service"]:
+            if not data.get(field): return {"error": f"Missing {field}", "status": 400}
+        if not self._validate_email(data["email"]): return {"error": "Invalid email", "status": 400}
+        if any(u["email"] == data["email"] for u in users): return {"error": "User exists", "status": 400}
+        if data["service"] not in SUPPORTED_SERVICES: return {"error": "Service unsupported", "status": 400}
+
+        user = {
+            "id": self._token(), "username": data["username"], "email": data["email"],
+            "password": self._hash(data["password"]), "service": data["service"],
+            "full_name": data.get("full_name", ""), "created_at": datetime.now().isoformat(), "is_active": True
         }
-        
-        users.append(new_user)
-        self.save_json_file(USERS_FILE, users)
-        
-        return {"message": "User registered successfully", "user_id": new_user["id"], "status": 201}
-    
+        users.append(user)
+        self._save(USERS_FILE, users)
+        return {"message": "Registered", "user_id": user["id"], "status": 201}
+
     def login_user(self, data):
-        users = self.load_json_file(USERS_FILE)
-        
-        if "email" not in data or "password" not in data:
-            return {"error": "Email and password required", "status": 400}
-        
-        user = next((u for u in users if u["email"] == data["email"]), None)
-        if not user or not self.verify_password(data["password"], user["password"]):
-            return {"error": "Invalid credentials", "status": 401}
-        
-        if not user.get("is_active", True):
-            return {"error": "Account deactivated", "status": 401}
-        
-        # Create session
-        token = self.generate_token()
-        expires_at = datetime.now() + timedelta(hours=24)
-        
-        sessions = self.load_json_file(SESSIONS_FILE)
-        # Remove existing sessions for this user
-        sessions = [s for s in sessions if s["email"] != user["email"]]
-        
+        users = self._load(USERS_FILE)
+        email, pwd = data.get("email"), data.get("password")
+        if not email or not pwd: return {"error": "Email and password required", "status": 400}
+
+        user = next((u for u in users if u["email"] == email), None)
+        if not user or self._hash(pwd) != user["password"]: return {"error": "Invalid credentials", "status": 401}
+        if not user.get("is_active", True): return {"error": "Account deactivated", "status": 401}
+
+        token, expires = self._token(), datetime.now() + timedelta(hours=24)
+        sessions = [s for s in self._load(SESSIONS_FILE) if s["email"] != email]
         sessions.append({
-            "token": token,
-            "email": user["email"],
-            "user_id": user["id"],
-            "created_at": datetime.now().isoformat(),
-            "expires_at": expires_at.isoformat()
+            "token": token, "email": email, "user_id": user["id"],
+            "created_at": datetime.now().isoformat(), "expires_at": expires.isoformat()
         })
-        
-        self.save_json_file(SESSIONS_FILE, sessions)
-        
-        return {
-            "token": token,
-            "user": {
-                "id": user["id"],
-                "username": user["username"],
-                "email": user["email"],
-                "service": user["service"],
-                "full_name": user.get("full_name", "")
-            },
-            "expires_at": expires_at.isoformat(),
-            "status": 200
-        }
-    
+        self._save(SESSIONS_FILE, sessions)
+
+        return {"token": token, "user": {k: user[k] for k in ("id", "username", "email", "service", "full_name")},
+                "expires_at": expires.isoformat(), "status": 200}
+
     def logout_user(self, token):
-        sessions = self.load_json_file(SESSIONS_FILE)
-        session = next((s for s in sessions if s["token"] == token), None)
-        
-        if not session:
-            return {"error": "Invalid token", "status": 401}
-        
-        sessions = [s for s in sessions if s["token"] != token]
-        self.save_json_file(SESSIONS_FILE, sessions)
-        
-        return {"message": "Logged out successfully", "status": 200}
-    
+        sessions = [s for s in self._load(SESSIONS_FILE) if s["token"] != token]
+        self._save(SESSIONS_FILE, sessions)
+        return {"message": "Logged out", "status": 200}
+
     def get_profile(self, token):
-        user = self.get_user_by_token(token)
-        if not user:
-            return {"error": "Invalid or expired token", "status": 401}
-        
-        return {
-            "user": {
-                "id": user["id"],
-                "username": user["username"],
-                "email": user["email"],
-                "service": user["service"],
-                "full_name": user.get("full_name", ""),
-                "created_at": user["created_at"]
-            },
-            "status": 200
-        }
-    
+        user = self._get_user_by_token(token)
+        return {"user": user, "status": 200} if user else {"error": "Invalid token", "status": 401}
+
     def send_email(self, token, data):
-        user = self.get_user_by_token(token)
-        if not user:
-            return {"error": "Invalid or expired token", "status": 401}
-        
-        # Validate required fields
-        required_fields = ["to", "subject", "body"]
-        for field in required_fields:
-            if field not in data:
-                return {"error": f"Missing required field: {field}", "status": 400}
-        
-        if not isinstance(data["to"], list) or not data["to"]:
-            return {"error": "To field must be a non-empty list", "status": 400}
-        
-        # Validate recipients
-        users = self.load_json_file(USERS_FILE)
-        user_emails = [u["email"] for u in users if u.get("is_active", True)]
-        
-        all_recipients = data["to"] + data.get("cc", []) + data.get("bcc", [])
-        invalid_recipients = [r for r in all_recipients if r not in user_emails]
-        
-        if invalid_recipients:
-            return {"error": f"Invalid recipients: {', '.join(invalid_recipients)}", "status": 400}
-        
-        # Create email
-        emails = self.load_json_file(EMAILS_FILE)
-        email_id = str(uuid.uuid4())
-        
-        email_record = {
-            "id": email_id,
-            "from_email": user["email"],
-            "from_service": user["service"],
-            "to": data["to"],
-            "cc": data.get("cc", []),
-            "bcc": data.get("bcc", []),
-            "subject": data["subject"],
-            "body": data["body"],
-            "timestamp": datetime.now().isoformat(),
-            "read_by": []
+        user = self._get_user_by_token(token)
+        if not user: return {"error": "Invalid token", "status": 401}
+        for field in ["to", "subject", "body"]:
+            if not data.get(field): return {"error": f"Missing {field}", "status": 400}
+        to_field = data.get("to")
+        if not isinstance(to_field, list) or not to_field:
+            return {
+                "error": "'to' must be a list of at least one recipient email address",
+                "status": 400
+            }
+
+        users = self._load(USERS_FILE)
+        valid_emails = [u["email"] for u in users if u.get("is_active", True)]
+        recipients = data["to"] + data.get("cc", []) + data.get("bcc", [])
+        invalid = [r for r in recipients if r not in valid_emails]
+        if invalid: return {"error": f"Invalid recipients: {', '.join(invalid)}", "status": 400}
+
+        emails = self._load(EMAILS_FILE)
+        email = {
+            "id": self._token(), "from_email": user["email"], "from_service": user["service"],
+            "to": data["to"], "cc": data.get("cc", []), "bcc": data.get("bcc", []),
+            "subject": data["subject"], "body": data["body"],
+            "timestamp": datetime.now().isoformat(), "read_by": []
         }
-        
-        emails.append(email_record)
-        self.save_json_file(EMAILS_FILE, emails)
-        
-        return {"message": "Email sent successfully", "email_id": email_id, "status": 200}
-    
+        emails.append(email)
+        self._save(EMAILS_FILE, emails)
+        return {"message": "Sent", "email_id": email["id"], "status": 200}
+
     def get_inbox(self, token):
-        user = self.get_user_by_token(token)
+        user = self._get_user_by_token(token)
         if not user:
-            return {"error": "Invalid or expired token", "status": 401}
-        
-        emails = self.load_json_file(EMAILS_FILE)
-        users = self.load_json_file(USERS_FILE)
-        
+            return {"error": "Invalid token", "status": 401}
         user_email = user["email"]
-        inbox_emails = []
-        
-        for email in emails:
-            if (user_email in email["to"] or 
-                user_email in email.get("cc", []) or 
-                user_email in email.get("bcc", [])):
-                
-                sender = next((u for u in users if u["email"] == email["from_email"]), None)
-                sender_service = sender["service"] if sender else "unknown"
-                
-                inbox_emails.append({
+        all_emails = self._load(EMAILS_FILE)
+        all_users = self._load(USERS_FILE)
+        inbox = []
+        for email in all_emails:
+            is_recipient = (
+                user_email in email.get("to", []) or
+                user_email in email.get("cc", []) or
+                user_email in email.get("bcc", [])
+            )
+            if is_recipient:
+                sender = next((u for u in all_users if u["email"] == email["from_email"]), None)
+                inbox_entry = {
                     "id": email["id"],
                     "from_email": email["from_email"],
-                    "to": email["to"],
+                    "to": email.get("to", []),
                     "cc": email.get("cc", []),
                     "bcc": email.get("bcc", []) if user_email == email["from_email"] else [],
                     "subject": email["subject"],
                     "body": email["body"],
                     "timestamp": email["timestamp"],
                     "read": user_email in email.get("read_by", []),
-                    "service": sender_service
-                })
-        
-        # Sort by timestamp (newest first)
-        inbox_emails.sort(key=lambda x: x["timestamp"], reverse=True)
-        
-        return {"emails": inbox_emails, "status": 200}
-    
+                    "service": sender["service"] if sender else "unknown"
+                }
+                inbox.append(inbox_entry)
+        inbox.sort(key=lambda x: x["timestamp"], reverse=True)
+        return {"emails": inbox, "status": 200}
+
+
     def get_sent_emails(self, token):
-        user = self.get_user_by_token(token)
-        if not user:
-            return {"error": "Invalid or expired token", "status": 401}
-        
-        emails = self.load_json_file(EMAILS_FILE)
-        user_email = user["email"]
-        
+        user = self._get_user_by_token(token)
+        if not user: return {"error": "Invalid token", "status": 401}
+        emails = self._load(EMAILS_FILE)
+        sent = [e for e in emails if e["from_email"] == user["email"]]
+        sent.sort(key=lambda x: x["timestamp"], reverse=True)
         sent_emails = []
-        for email in emails:
-            if email["from_email"] == user_email:
-                sent_emails.append({
-                    "id": email["id"],
-                    "from_email": email["from_email"],
-                    "to": email["to"],
-                    "cc": email.get("cc", []),
-                    "bcc": email.get("bcc", []),
-                    "subject": email["subject"],
-                    "body": email["body"],
-                    "timestamp": email["timestamp"],
-                    "read": True,
-                    "service": user["service"]
-                })
-        
-        sent_emails.sort(key=lambda x: x["timestamp"], reverse=True)
-        return {"emails": sent_emails, "status": 200}
-    
-    def mark_email_read(self, token, email_id):
-        user = self.get_user_by_token(token)
-        if not user:
-            return {"error": "Invalid or expired token", "status": 401}
-        
-        emails = self.load_json_file(EMAILS_FILE)
-        email = next((e for e in emails if e["id"] == email_id), None)
-        
-        if not email:
-            return {"error": "Email not found", "status": 404}
-        
-        user_email = user["email"]
-        if (user_email not in email["to"] and 
-            user_email not in email.get("cc", []) and 
-            user_email not in email.get("bcc", [])):
-            return {"error": "Access denied", "status": 403}
-        
-        if user_email not in email.get("read_by", []):
-            email["read_by"].append(user_email)
-            self.save_json_file(EMAILS_FILE, emails)
-        
-        return {"message": "Email marked as read", "status": 200}
-    
-    def search_users(self, token, query=""):
-        user = self.get_user_by_token(token)
-        if not user:
-            return {"error": "Invalid or expired token", "status": 401}
-        
-        users = self.load_json_file(USERS_FILE)
-        current_email = user["email"]
-        
-        filtered_users = []
-        for u in users:
-            if not u.get("is_active", True) or u["email"] == current_email:
-                continue
-            
-            if not query or (
-                query.lower() in u["email"].lower() or
-                query.lower() in u["username"].lower() or
-                query.lower() in u.get("full_name", "").lower()
-            ):
-                filtered_users.append({
-                    "email": u["email"],
-                    "username": u["username"],
-                    "full_name": u.get("full_name", ""),
-                    "service": u["service"]
-                })
-        
-        return {"users": filtered_users, "status": 200}
-    
-    def get_stats(self, token):
-        user = self.get_user_by_token(token)
-        if not user:
-            return {"error": "Invalid or expired token", "status": 401}
-        
-        emails = self.load_json_file(EMAILS_FILE)
-        user_email = user["email"]
-        
-        sent_count = len([e for e in emails if e["from_email"] == user_email])
-        
-        received_count = len([
-            e for e in emails 
-            if (user_email in e["to"] or 
-                user_email in e.get("cc", []) or 
-                user_email in e.get("bcc", []))
-        ])
-        
-        unread_count = len([
-            e for e in emails 
-            if (user_email in e["to"] or 
-                user_email in e.get("cc", []) or 
-                user_email in e.get("bcc", [])) and
-            user_email not in e.get("read_by", [])
-        ])
-        
+        for email in sent:
+            email_copy = email.copy()
+            email_copy["read"] = True
+            email_copy["service"] = user["service"]
+            sent_emails.append(email_copy)
         return {
-            "stats": {
-                "sent": sent_count,
-                "received": received_count,
-                "unread": unread_count
-            },
+            "emails": sent_emails,
             "status": 200
         }
 
+    # def mark_email_read(self, token, email_id):
+    #     user = self._get_user_by_token(token)
+    #     if not user: return {"error": "Invalid token", "status": 401}
+    #     emails = self._load(EMAILS_FILE)
+    #     email = next((e for e in emails if e["id"] == email_id), None)
+    #     if not email: return {"error": "Email not found", "status": 404}
+    #     if user["email"] not in email.get("read_by", []):
+    #         email.setdefault("read_by", []).append(user["email"])
+    #         self._save(EMAILS_FILE, emails)
+    #     return {"message": "Marked as read", "status": 200}
+
 # HTTP Request Handler
 class MailHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, mail_service=None, **kwargs):
+    def __init__(self, request, client_address, server, mail_service=None):
         self.mail_service = mail_service
-        super().__init__(*args, **kwargs)
-    
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_cors_headers()
-        self.end_headers()
-    
+        super().__init__(request, client_address, server)
+
     def send_cors_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    
+
     def send_json_response(self, data, status=200):
         self.send_response(status)
         self.send_cors_headers()
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
-    
+        response = json.dumps(data).encode('utf-8')
+        self.wfile.write(response)
+
     def get_auth_token(self):
-        auth_header = self.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            return auth_header[7:]
-        return None
-    
+        auth = self.headers.get('Authorization')
+        return auth[7:] if auth and auth.startswith('Bearer ') else None
+
     def parse_request_body(self):
-        content_length = int(self.headers.get('Content-Length', 0))
-        if content_length:
-            body = self.rfile.read(content_length)
+        length = int(self.headers.get('Content-Length', 0))
+        if length:
             try:
-                return json.loads(body.decode())
+                return json.loads(self.rfile.read(length).decode())
             except:
                 return {}
         return {}
-    
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_cors_headers()
+        self.end_headers()
+
     def do_GET(self):
-        parsed_path = urlparse(self.path)
-        path = parsed_path.path
-        query_params = parse_qs(parsed_path.query)
-        
-        if path == '/':
-            self.send_json_response({
+        path = urlparse(self.path).path
+        params = parse_qs(urlparse(self.path).query)
+        token = self.get_auth_token()
+
+        routes = {
+            '/': lambda: {
                 "message": "Offline Mail Service API",
                 "version": "1.0.0",
                 "endpoints": [
@@ -453,121 +275,52 @@ class MailHandler(BaseHTTPRequestHandler):
                     "GET /profile", "POST /send", "GET /inbox", "GET /sent",
                     "PUT /email/{id}/read", "GET /users/search", "GET /stats"
                 ]
-            })
-        
-        elif path == '/services':
-            self.send_json_response({"services": SUPPORTED_SERVICES})
-        
-        elif path == '/profile':
-            token = self.get_auth_token()
-            result = self.mail_service.get_profile(token)
-            self.send_json_response(result, result.get('status', 200))
-        
-        elif path == '/inbox':
-            token = self.get_auth_token()
-            result = self.mail_service.get_inbox(token)
-            self.send_json_response(result, result.get('status', 200))
-        
-        elif path == '/sent':
-            token = self.get_auth_token()
-            result = self.mail_service.get_sent_emails(token)
-            self.send_json_response(result, result.get('status', 200))
-        
-        elif path == '/users/search':
-            token = self.get_auth_token()
-            query = query_params.get('q', [''])[0]
-            result = self.mail_service.search_users(token, query)
-            self.send_json_response(result, result.get('status', 200))
-        
-        elif path == '/stats':
-            token = self.get_auth_token()
-            result = self.mail_service.get_stats(token)
-            self.send_json_response(result, result.get('status', 200))
-        
+            },
+            '/services': lambda: {"services": SUPPORTED_SERVICES},
+            '/profile': lambda: self.mail_service.get_profile(token),
+            '/inbox': lambda: self.mail_service.get_inbox(token),
+            '/sent': lambda: self.mail_service.get_sent_emails(token),
+            '/users/search': lambda: self.mail_service.search_users(token, params.get('q', [''])[0]),
+            '/stats': lambda: self.mail_service.get_stats(token)
+        }
+
+        handler = routes.get(path)
+        result = handler() if handler else {"error": "Not found"}
+        if isinstance(result, dict):
+            status_code = result.get('status', 200)
         else:
-            self.send_json_response({"error": "Not found"}, 404)
-    
-    # Replace your existing do_POST method with this enhanced version:
+            status_code = 200
+        self.send_json_response(result, status_code)
 
     def do_POST(self):
-        print("=" * 50)
-        print(f"POST request received for path: {self.path}")
-        print(f"Headers: {dict(self.headers)}")
-        
+        print(f"POST request received: {self.path}")
         try:
-            # Check content length first
-            content_length = int(self.headers.get('Content-Length', 0))
-            print(f"Content-Length: {content_length}")
-            
-            if content_length > 0:
-                body = self.rfile.read(content_length)
-                print(f"Raw body: {body}")
-                
-                try:
-                    data = json.loads(body.decode())
-                    print(f"Parsed data: {data}")
-                except json.JSONDecodeError as e:
-                    print(f"JSON decode error: {e}")
-                    self.send_json_response({"error": "Invalid JSON"}, 400)
-                    return
-            else:
-                data = {}
-                print("No body data")
-            
+            body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+            data = json.loads(body.decode()) if body else {}
+            token = self.get_auth_token()
             if self.path == '/register':
-                print("Processing registration...")
                 result = self.mail_service.register_user(data)
-                print(f"Registration result: {result}")
-                status_code = result.get('status', 200)
-                self.send_json_response(result, status_code)
-            
             elif self.path == '/login':
-                print("Processing login...")
                 result = self.mail_service.login_user(data)
-                print(f"Login result: {result}")
-                status_code = result.get('status', 200)
-                self.send_json_response(result, status_code)
-            
             elif self.path == '/logout':
-                print("Processing logout...")
-                token = self.get_auth_token()
                 result = self.mail_service.logout_user(token)
-                print(f"Logout result: {result}")
-                status_code = result.get('status', 200)
-                self.send_json_response(result, status_code)
-            
             elif self.path == '/send':
-                print("Processing send email...")
-                token = self.get_auth_token()
                 result = self.mail_service.send_email(token, data)
-                print(f"Send email result: {result}")
-                status_code = result.get('status', 200)
-                self.send_json_response(result, status_code)
-            
             else:
-                print(f"Unknown POST endpoint: {self.path}")
-                self.send_json_response({"error": "Not found"}, 404)
-                
+                result = {"error": "Not found"}
+            status = result.get('status', 200)
+            self.send_json_response(result, status)
         except Exception as e:
-            print(f"CRITICAL ERROR in do_POST: {e}")
-            import traceback
+            print("Error handling POST:", e)
             traceback.print_exc()
-            try:
-                self.send_json_response({"error": f"Server error: {str(e)}"}, 500)
-            except:
-                print("Failed to send error response")
-        
-        print("=" * 50)
-    
+            self.send_json_response({"error": "Server error"}, 500)
+
     def do_PUT(self):
-        path = self.path
         token = self.get_auth_token()
-        
-        if path.startswith('/email/') and path.endswith('/read'):
-            email_id = path.split('/')[2]
+        if self.path.startswith('/email/') and self.path.endswith('/read'):
+            email_id = self.path.split('/')[2]
             result = self.mail_service.mark_email_read(token, email_id)
             self.send_json_response(result, result.get('status', 200))
-        
         else:
             self.send_json_response({"error": "Not found"}, 404)
 
@@ -580,9 +333,9 @@ def get_local_ip():
     import socket
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        # Using Google's DNS as a dummy destination
         s.connect(('8.8.8.8', 80))
         ip = s.getsockname()[0]
+        print("ip: ",ip)
     except Exception:
         ip = '127.0.0.1'
     finally:
@@ -590,49 +343,20 @@ def get_local_ip():
     return ip
 
 def run_server(host='0.0.0.0', port=8000):
-    print("Yes")
+    print("hello")
     mail_service = MailService()
     handler = create_handler(mail_service)
-    
-    # Create the server first to catch port binding errors
     try:
         server = HTTPServer((host, port), handler)
     except OSError as e:
-        print(f"Error: Could not bind to port {port}")
-        print(f"Details: {e}")
+        print(f"Could not bind to port {port}: {e}")
         return
-    
-    local_ip = get_local_ip()
-    print("=" * 50)
-    print("📧 OFFLINE MAIL SERVICE STARTED")
-    print("=" * 50)
-    print(f"🏠 Local access:   http://127.0.0.1:{port}")
-    print(f"🌐 Network access: http://{local_ip}:{port}")
-    print("=" * 50)
-    print("📋 Available endpoints:")
-    print("  GET  /                 - API info")
-    print("  GET  /services         - List supported services")
-    print("  POST /register         - Register user")
-    print("  POST /login           - Login user")
-    print("  POST /logout          - Logout user")
-    print("  GET  /profile         - Get user profile")
-    print("  POST /send            - Send email")
-    print("  GET  /inbox           - Get inbox")
-    print("  GET  /sent            - Get sent emails")
-    print("  PUT  /email/{id}/read - Mark email as read")
-    print("  GET  /users/search    - Search users")
-    print("  GET  /stats           - Get statistics")
-    print("=" * 50)
-    print("💡 Share the network URL with other devices on your WiFi")
-    print("🛑 Press Ctrl+C to stop the server")
-    print("=" * 50)
-    
+    print(f"Server running at http://127.0.0.1:{port}")
+    print(f"Network access at http://{get_local_ip()}:{port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\n" + "=" * 50)
-        print("🛑 Shutting down server...")
-        print("=" * 50)
+        print("Shutting down server...")
         server.shutdown()
 
 if __name__ == "__main__":

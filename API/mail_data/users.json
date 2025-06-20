@@ -1,0 +1,12 @@
+[
+  {
+    "id": "144acf19-e9c2-45a1-875b-231395ef765c",
+    "username": "user2",
+    "email": "user2@test.com",
+    "password": "c6ba91b90d922e159893f46c387e5dc1b3dc5c101a5a4522f03b987177a24a91",
+    "service": "custom",
+    "full_name": "Danusri",
+    "created_at": "2025-06-19T14:40:42.516384",
+    "is_active": true
+  }
+]

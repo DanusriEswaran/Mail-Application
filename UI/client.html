@@ -1,647 +1,579 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Offline Mail Service</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: Arial, sans-serif;
+        background: #f0f0f0;
+        padding: 10px;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: auto;
+        background: #fff;
+        border-radius: 6px;
+      }
+
+      .header {
+        background: #444;
+        color: #fff;
+        padding: 15px;
+        text-align: center;
+      }
+
+      .content {
+        padding: 15px;
+      }
+
+      .section {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #f9f9f9;
+      }
+
+      .section h3 {
+        margin-bottom: 10px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+      }
+
+      .form-group {
+        margin-bottom: 10px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+
+      button {
+        background: #4299e1;
+        color: #fff;
+        padding: 10px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+
+      .btn-secondary {
+        background: #666;
+      }
+
+      .btn-success {
+        background: #4caf50;
+      }
+
+      .response {
+        margin-top: 10px;
+        padding: 10px;
+        font-size: 12px;
+        white-space: pre-wrap;
+      }
+
+      .success {
+        background: #e6ffed;
+        color: #1b5e20;
+      }
+
+      .error {
+        background: #ffe6e6;
+        color: #b71c1c;
+      }
+
+      .info {
+        background: #e3f2fd;
+        color: #0d47a1;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .config {
+        background: #eee;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+      }
+
+      .config input {
+        width: auto;
+        margin-right: 8px;
+      }
+
+      .status-bar {
+        padding: 8px;
+        background: #333;
+        color: #fff;
+        text-align: center;
+        font-size: 12px;
+      }
+
+      .email-list {
+        max-height: 250px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      .email-item {
+        padding: 8px;
+        border-bottom: 1px solid #ccc;
+        cursor: pointer;
+      }
+
+      .email-item:last-child {
+        border-bottom: none;
+      }
+
+      .email-item:hover {
+        background: #f1f1f1;
+      }
+
+      .email-subject {
+        font-weight: bold;
+      }
+
+      .email-meta {
+        font-size: 12px;
+        color: #777;
+      }
+
+      @media (max-width: 768px) {
         .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            overflow: hidden;
+          margin: 5px;
         }
-        
-        .header {
-            background: #4a5568;
-            color: white;
-            padding: 20px;
-            text-align: center;
-        }
-        
-        .content {
-            padding: 20px;
-        }
-        
+
+        .content,
         .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            background: #f7fafc;
+          padding: 10px;
         }
-        
-        .section h3 {
-            color: #2d3748;
-            margin-bottom: 15px;
-            padding-bottom: 5px;
-            border-bottom: 2px solid #e2e8f0;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #4a5568;
-        }
-        
-        input, select, textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #cbd5e0;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-        
-        button {
-            background: #4299e1;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-right: 10px;
-            margin-bottom: 10px;
-        }
-        
-        button:hover {
-            background: #3182ce;
-        }
-        
-        .btn-secondary {
-            background: #718096;
-        }
-        
-        .btn-secondary:hover {
-            background: #4a5568;
-        }
-        
-        .btn-success {
-            background: #48bb78;
-        }
-        
-        .btn-success:hover {
-            background: #38a169;
-        }
-        
-        .response {
-            margin-top: 15px;
-            padding: 15px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .success {
-            background: #c6f6d5;
-            border: 1px solid #9ae6b4;
-            color: #22543d;
-        }
-        
-        .error {
-            background: #fed7d7;
-            border: 1px solid #feb2b2;
-            color: #742a2a;
-        }
-        
-        .info {
-            background: #bee3f8;
-            border: 1px solid #90cdf4;
-            color: #2a4365;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .config {
-            background: #edf2f7;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .config input {
-            width: auto;
-            margin-right: 10px;
-        }
-        
-        .status-bar {
-            padding: 10px;
-            background: #2d3748;
-            color: white;
-            text-align: center;
-            font-size: 12px;
-        }
-        
-        .email-list {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #e2e8f0;
-            border-radius: 5px;
-        }
-        
-        .email-item {
-            padding: 10px;
-            border-bottom: 1px solid #e2e8f0;
-            cursor: pointer;
-        }
-        
-        .email-item:hover {
-            background: #f7fafc;
-        }
-        
-        .email-item:last-child {
-            border-bottom: none;
-        }
-        
-        .email-subject {
-            font-weight: bold;
-            color: #2d3748;
-        }
-        
-        .email-meta {
-            font-size: 12px;
-            color: #718096;
-            margin-top: 5px;
-        }
-        
-        @media (max-width: 768px) {
-            .container {
-                margin: 10px;
-            }
-            
-            .content {
-                padding: 15px;
-            }
-            
-            .section {
-                padding: 15px;
-            }
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+
+  <body>
     <div class="container">
-        <div class="header">
-            <h1>📧 Offline Mail Service</h1>
-            <p>Local Network Email System</p>
+      <div class="header"><h1>Offline Mail Service</h1></div>
+
+      <div class="content">
+        <!-- Server Config -->
+        <div class="config">
+          <label for="serverUrl">Server URL:</label>
+          <input
+            type="text"
+            id="serverUrl"
+            value="http://192.168.237.159:8000"
+            placeholder="http://your-server-ip:8000"
+          />
+          <button onclick="testConnection()">Test Connection</button>
+          <div id="connectionStatus"></div>
         </div>
-        
-        <div class="content">
-            <!-- Server Configuration -->
-            <div class="config">
-                <label for="serverUrl">Server URL:</label>
-                <input type="text" id="serverUrl" value="http://192.168.237.159:8000" placeholder="http://your-server-ip:8000">
-                <button onclick="testConnection()">Test Connection</button>
-                <div id="connectionStatus"></div>
-            </div>
-            
-            <!-- Status Bar -->
-            <div class="status-bar" id="statusBar">
-                Not logged in
-            </div>
-            
-            <!-- Registration Section -->
-            <div class="section" id="registerSection">
-                <h3>👤 Register New User</h3>
-                <div class="form-group">
-                    <label for="regUsername">Username:</label>
-                    <input type="text" id="regUsername" placeholder="Enter username">
-                </div>
-                <div class="form-group">
-                    <label for="regEmail">Email:</label>
-                    <input type="email" id="regEmail" placeholder="Enter email address">
-                </div>
-                <div class="form-group">
-                    <label for="regPassword">Password:</label>
-                    <input type="password" id="regPassword" placeholder="Enter password">
-                </div>
-                <div class="form-group">
-                    <label for="regFullName">Full Name (optional):</label>
-                    <input type="text" id="regFullName" placeholder="Enter full name">
-                </div>
-                <div class="form-group">
-                    <label for="regService">Email Service:</label>
-                    <select id="regService">
-                        <option value="custom">Custom Local Mail</option>
-                        <option value="gmail">Gmail</option>
-                        <option value="outlook">Outlook</option>
-                        <option value="yahoo">Yahoo</option>
-                        <option value="hotmail">Hotmail</option>
-                    </select>
-                </div>
-                <button onclick="registerUser()">Register</button>
-                <div id="registerResponse"></div>
-            </div>
-            
-            <!-- Login Section -->
-            <div class="section" id="loginSection">
-                <h3>🔐 Login</h3>
-                <div class="form-group">
-                    <label for="loginEmail">Email:</label>
-                    <input type="email" id="loginEmail" placeholder="Enter email address">
-                </div>
-                <div class="form-group">
-                    <label for="loginPassword">Password:</label>
-                    <input type="password" id="loginPassword" placeholder="Enter password">
-                </div>
-                <button onclick="loginUser()">Login</button>
-                <button class="btn-secondary" onclick="logout()">Logout</button>
-                <div id="loginResponse"></div>
-            </div>
-            
-            <!-- Mail Actions (Hidden by default) -->
-            <div class="section hidden" id="mailSection">
-                <h3>📨 Send Email</h3>
-                <div class="form-group">
-                    <label for="emailTo">To (comma-separated):</label>
-                    <input type="text" id="emailTo" placeholder="recipient1@example.com, recipient2@example.com">
-                </div>
-                <div class="form-group">
-                    <label for="emailCc">CC (optional, comma-separated):</label>
-                    <input type="text" id="emailCc" placeholder="cc1@example.com, cc2@example.com">
-                </div>
-                <div class="form-group">
-                    <label for="emailSubject">Subject:</label>
-                    <input type="text" id="emailSubject" placeholder="Enter email subject">
-                </div>
-                <div class="form-group">
-                    <label for="emailBody">Message:</label>
-                    <textarea id="emailBody" placeholder="Enter your message here..."></textarea>
-                </div>
-                <button class="btn-success" onclick="sendEmail()">Send Email</button>
-                <div id="sendResponse"></div>
-            </div>
-            
-            <!-- Inbox Section -->
-            <div class="section hidden" id="inboxSection">
-                <h3>📥 Inbox</h3>
-                <button onclick="loadInbox()">Refresh Inbox</button>
-                <button class="btn-secondary" onclick="loadSentEmails()">View Sent</button>
-                <button class="btn-secondary" onclick="loadStats()">Statistics</button>
-                <div id="emailList" class="email-list"></div>
-                <div id="inboxResponse"></div>
-            </div>
-            
-            <!-- User Search -->
-            <div class="section hidden" id="searchSection">
-                <h3>👥 Search Users</h3>
-                <div class="form-group">
-                    <label for="searchQuery">Search:</label>
-                    <input type="text" id="searchQuery" placeholder="Search by email, username, or name">
-                </div>
-                <button onclick="searchUsers()">Search Users</button>
-                <div id="searchResponse"></div>
-            </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar" id="statusBar">Not logged in</div>
+
+        <!-- Register -->
+        <div class="section" id="registerSection">
+          <h3>Register New User</h3>
+          <div class="form-group">
+            <label
+              >Username:<input
+                type="text"
+                id="regUsername"
+                placeholder="Enter username"
+            /></label>
+          </div>
+          <div class="form-group">
+            <label
+              >Email:<input
+                type="email"
+                id="regEmail"
+                placeholder="Enter email address"
+            /></label>
+          </div>
+          <div class="form-group">
+            <label
+              >Password:<input
+                type="password"
+                id="regPassword"
+                placeholder="Enter password"
+            /></label>
+          </div>
+          <div class="form-group">
+            <label
+              >Full Name (optional):<input
+                type="text"
+                id="regFullName"
+                placeholder="Enter full name"
+            /></label>
+          </div>
+          <div class="form-group">
+            <label
+              >Email Service:
+              <select id="regService">
+                <option value="custom">Custom Local Mail</option>
+                <option value="gmail">Gmail</option>
+                <option value="outlook">Outlook</option>
+                <option value="yahoo">Yahoo</option>
+                <option value="hotmail">Hotmail</option>
+              </select>
+            </label>
+          </div>
+          <button onclick="registerUser()">Register</button>
+          <div id="registerResponse"></div>
         </div>
+
+        <!-- Login -->
+        <div class="section" id="loginSection">
+          <h3>Login</h3>
+          <div class="form-group">
+            <label
+              >Email:<input
+                type="email"
+                id="loginEmail"
+                placeholder="Enter email address"
+            /></label>
+          </div>
+          <div class="form-group">
+            <label
+              >Password:<input
+                type="password"
+                id="loginPassword"
+                placeholder="Enter password"
+            /></label>
+          </div>
+          <button onclick="loginUser()">Login</button>
+          <button class="btn-secondary" onclick="logout()">Logout</button>
+          <div id="loginResponse"></div>
+        </div>
+
+        <!-- Send Email -->
+        <div class="section hidden" id="mailSection">
+          <h3>Send Email</h3>
+          <div class="form-group">
+            <label
+              >To:<input
+                type="text"
+                id="emailTo"
+                placeholder="recipient1@example.com, recipient2@example.com"
+            /></label>
+          </div>
+          <div class="form-group">
+            <label
+              >CC:<input
+                type="text"
+                id="emailCc"
+                placeholder="cc1@example.com, cc2@example.com"
+            /></label>
+          </div>
+          <div class="form-group">
+            <label
+              >Subject:<input
+                type="text"
+                id="emailSubject"
+                placeholder="Enter email subject"
+            /></label>
+          </div>
+          <div class="form-group">
+            <label
+              >Message:<textarea
+                id="emailBody"
+                placeholder="Enter your message here..."
+              ></textarea>
+            </label>
+          </div>
+          <button class="btn-success" onclick="sendEmail()">Send Email</button>
+          <div id="sendResponse"></div>
+        </div>
+
+        <!-- Inbox -->
+        <div class="section hidden" id="inboxSection">
+          <h3>Inbox</h3>
+          <button onclick="loadInbox()">Refresh Inbox</button>
+          <button class="btn-secondary" onclick="loadSentEmails()">
+            View Sent
+          </button>
+          <button class="btn-secondary" onclick="loadStats()">
+            Statistics
+          </button>
+          <div id="emailList" class="email-list"></div>
+          <div id="inboxResponse"></div>
+        </div>
+
+        <!-- Search Users -->
+        <div class="section hidden" id="searchSection">
+          <h3>Search Users</h3>
+          <div class="form-group">
+            <label
+              >Search:<input
+                type="text"
+                id="searchQuery"
+                placeholder="Search by email, username, or name"
+            /></label>
+          </div>
+          <button onclick="searchUsers()">Search Users</button>
+          <div id="searchResponse"></div>
+        </div>
+      </div>
     </div>
 
     <script>
-        let authToken = localStorage.getItem('authToken') || '';
-        let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-        
-        // Update status bar and show/hide sections based on login status
-        function updateUI() {
-            const statusBar = document.getElementById('statusBar');
-            const mailSection = document.getElementById('mailSection');
-            const inboxSection = document.getElementById('inboxSection');
-            const searchSection = document.getElementById('searchSection');
-            
-            if (authToken && currentUser) {
-                statusBar.textContent = `Logged in as: ${currentUser.username} (${currentUser.email})`;
-                statusBar.style.background = '#48bb78';
-                mailSection.classList.remove('hidden');
-                inboxSection.classList.remove('hidden');
-                searchSection.classList.remove('hidden');
-            } else {
-                statusBar.textContent = 'Not logged in';
-                statusBar.style.background = '#2d3748';
-                mailSection.classList.add('hidden');
-                inboxSection.classList.add('hidden');
-                searchSection.classList.add('hidden');
-            }
+      let authToken = localStorage.getItem("authToken") || "";
+      let currentUser = JSON.parse(
+        localStorage.getItem("currentUser") || "null"
+      );
+
+      const $ = (id) => document.getElementById(id);
+      const getServerUrl = () => $("serverUrl").value.trim();
+      const show = (id, msg, type = "info") => {
+        const el = $(id);
+        el.className = `response ${type}`;
+        el.textContent =
+          typeof msg === "string" ? msg : JSON.stringify(msg, null, 2);
+      };
+
+      function updateUI() {
+        const loggedIn = authToken && currentUser;
+        $("statusBar").textContent = loggedIn
+          ? `Logged in as: ${currentUser.username} (${currentUser.email})`
+          : "Not logged in";
+        $("statusBar").style.background = loggedIn ? "#48bb78" : "#2d3748";
+
+        ["mailSection", "inboxSection", "searchSection"].forEach((id) =>
+          $(id).classList.toggle("hidden", !loggedIn)
+        );
+      }
+
+      updateUI();
+
+      async function apiCall(
+        endpoint,
+        method = "GET",
+        body = null,
+        auth = false
+      ) {
+        const headers = { "Content-Type": "application/json" };
+        if (auth) headers["Authorization"] = `Bearer ${authToken}`;
+        const res = await fetch(`${getServerUrl()}${endpoint}`, {
+          method,
+          headers,
+          body: body && JSON.stringify(body),
+        });
+        return res.ok ? await res.json() : Promise.reject(await res.json());
+      }
+
+      async function testConnection() {
+        show("connectionStatus", "Testing connection...");
+        try {
+          const data = await apiCall("/");
+          show("connectionStatus", data, "success");
+        } catch (e) {
+          show("connectionStatus", e, "error");
         }
-        
-        // Initialize UI on page load
+      }
+
+      async function registerUser() {
+        const user = {
+          username: $("regUsername").value,
+          email: $("regEmail").value,
+          password: $("regPassword").value,
+          full_name: $("regFullName").value,
+          service: $("regService").value,
+        };
+        show("registerResponse", "Registering user...");
+        try {
+          const data = await apiCall("/register", "POST", user);
+          show("registerResponse", data, "success");
+          [
+            "regUsername",
+            "regEmail",
+            "regPassword",
+            "regFullName",
+            "regService",
+          ].forEach((id) => ($(id).value = ""));
+        } catch (e) {
+          show("registerResponse", e, "error");
+        }
+      }
+
+      async function loginUser() {
+        const creds = {
+          email: $("loginEmail").value,
+          password: $("loginPassword").value,
+        };
+        show("loginResponse", "Logging in...");
+        try {
+          const data = await apiCall("/login", "POST", creds);
+          authToken = data.token;
+          currentUser = data.user;
+          localStorage.setItem("authToken", authToken);
+          localStorage.setItem("currentUser", JSON.stringify(currentUser));
+          updateUI();
+          $("loginPassword").value = "";
+          show("loginResponse", data, "success");
+        } catch (e) {
+          show("loginResponse", e, "error");
+        }
+      }
+
+      async function logout() {
+        try {
+          if (authToken) await apiCall("/logout", "POST", null, true);
+        } catch (e) {
+          console.warn("Logout error", e);
+        }
+        localStorage.clear();
+        authToken = "";
+        currentUser = null;
         updateUI();
-        
-        function getServerUrl() {
-            return document.getElementById('serverUrl').value.trim();
+        show("loginResponse", "Logged out successfully", "info");
+      }
+
+      async function sendEmail() {
+        const email = {
+          to: $("emailTo")
+            .value.split(",")
+            .map((e) => e.trim())
+            .filter(Boolean),
+          cc: $("emailCc")
+            .value.split(",")
+            .map((e) => e.trim())
+            .filter(Boolean),
+          subject: $("emailSubject").value,
+          body: $("emailBody").value,
+        };
+        if (!email.cc.length) delete email.cc;
+        show("sendResponse", "Sending email...");
+        try {
+          const data = await apiCall("/send", "POST", email, true);
+          ["emailTo", "emailCc", "emailSubject", "emailBody"].forEach(
+            (id) => ($(id).value = "")
+          );
+          show("sendResponse", data, "success");
+        } catch (e) {
+          show("sendResponse", e, "error");
         }
-        
-        function showResponse(elementId, data, isError = false) {
-            const element = document.getElementById(elementId);
-            element.className = `response ${isError ? 'error' : 'success'}`;
-            element.textContent = JSON.stringify(data, null, 2);
+      }
+
+      async function loadEmails(endpoint, label) {
+        show("inboxResponse", `Loading ${label}...`);
+        try {
+          const { emails } = await apiCall(endpoint, "GET", null, true);
+          displayEmails(emails, label);
+          $("inboxResponse").textContent = "";
+        } catch (e) {
+          show("inboxResponse", e, "error");
         }
-        
-        function showInfo(elementId, message) {
-            const element = document.getElementById(elementId);
-            element.className = 'response info';
-            element.textContent = message;
+      }
+
+      const loadInbox = () => loadEmails("/inbox", "inbox");
+      const loadSentEmails = () => loadEmails("/sent", "sent");
+      const loadStats = async () => {
+        try {
+          const stats = await apiCall("/stats", "GET", null, true);
+          show("inboxResponse", stats, "success");
+        } catch (e) {
+          show("inboxResponse", e, "error");
         }
-        
-        async function testConnection() {
-            const serverUrl = getServerUrl();
-            const statusElement = document.getElementById('connectionStatus');
-            
-            try {
-                showInfo('connectionStatus', 'Testing connection...');
-                const response = await fetch(`${serverUrl}/`);
-                const data = await response.json();
-                showResponse('connectionStatus', data);
-            } catch (error) {
-                showResponse('connectionStatus', { error: 'Connection failed: ' + error.message }, true);
-            }
+      };
+
+      function displayEmails(emails, type) {
+        const emailList = $("emailList");
+        if (!emails.length) {
+          emailList.innerHTML =
+            '<div style="text-align:center;color:#718096;">No emails found</div>';
+          return;
         }
-        
-        async function registerUser() {
-            const serverUrl = getServerUrl();
-            const userData = {
-                username: document.getElementById('regUsername').value,
-                email: document.getElementById('regEmail').value,
-                password: document.getElementById('regPassword').value,
-                full_name: document.getElementById('regFullName').value,
-                service: document.getElementById('regService').value
-            };
-            
-            try {
-                showInfo('registerResponse', 'Registering user...');
-                const response = await fetch(`${serverUrl}/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(userData)
-                });
-                
-                const data = await response.json();
-                showResponse('registerResponse', data, !response.ok);
-                
-                if (response.ok) {
-                    // Clear form
-                    document.getElementById('regUsername').value = '';
-                    document.getElementById('regEmail').value = '';
-                    document.getElementById('regPassword').value = '';
-                    document.getElementById('regFullName').value = '';
-                }
-            } catch (error) {
-                showResponse('registerResponse', { error: 'Registration failed: ' + error.message }, true);
-            }
-        }
-        
-        async function loginUser() {
-            const serverUrl = getServerUrl();
-            const loginData = {
-                email: document.getElementById('loginEmail').value,
-                password: document.getElementById('loginPassword').value
-            };
-            
-            try {
-                showInfo('loginResponse', 'Logging in...');
-                const response = await fetch(`${serverUrl}/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(loginData)
-                });
-                
-                const data = await response.json();
-                showResponse('loginResponse', data, !response.ok);
-                
-                if (response.ok && data.token) {
-                    authToken = data.token;
-                    currentUser = data.user;
-                    localStorage.setItem('authToken', authToken);
-                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    updateUI();
-                    
-                    // Clear password field
-                    document.getElementById('loginPassword').value = '';
-                }
-            } catch (error) {
-                showResponse('loginResponse', { error: 'Login failed: ' + error.message }, true);
-            }
-        }
-        
-        async function logout() {
-            const serverUrl = getServerUrl();
-            
-            try {
-                if (authToken) {
-                    await fetch(`${serverUrl}/logout`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${authToken}`
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error('Logout error:', error);
-            }
-            
-            // Clear local storage and update UI
-            authToken = '';
-            currentUser = null;
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('currentUser');
-            updateUI();
-            showInfo('loginResponse', 'Logged out successfully');
-        }
-        
-        async function sendEmail() {
-            const serverUrl = getServerUrl();
-            const emailData = {
-                to: document.getElementById('emailTo').value.split(',').map(e => e.trim()).filter(e => e),
-                cc: document.getElementById('emailCc').value.split(',').map(e => e.trim()).filter(e => e),
-                subject: document.getElementById('emailSubject').value,
-                body: document.getElementById('emailBody').value
-            };
-            
-            if (emailData.cc.length === 0) {
-                delete emailData.cc;
-            }
-            
-            try {
-                showInfo('sendResponse', 'Sending email...');
-                const response = await fetch(`${serverUrl}/send`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify(emailData)
-                });
-                
-                const data = await response.json();
-                showResponse('sendResponse', data, !response.ok);
-                
-                if (response.ok) {
-                    // Clear form
-                    document.getElementById('emailTo').value = '';
-                    document.getElementById('emailCc').value = '';
-                    document.getElementById('emailSubject').value = '';
-                    document.getElementById('emailBody').value = '';
-                }
-            } catch (error) {
-                showResponse('sendResponse', { error: 'Send failed: ' + error.message }, true);
-            }
-        }
-        
-        async function loadInbox() {
-            const serverUrl = getServerUrl();
-            
-            try {
-                showInfo('inboxResponse', 'Loading inbox...');
-                const response = await fetch(`${serverUrl}/inbox`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.emails) {
-                    displayEmails(data.emails, 'inbox');
-                    document.getElementById('inboxResponse').textContent = '';
-                } else {
-                    showResponse('inboxResponse', data, true);
-                }
-            } catch (error) {
-                showResponse('inboxResponse', { error: 'Load inbox failed: ' + error.message }, true);
-            }
-        }
-        
-        async function loadSentEmails() {
-            const serverUrl = getServerUrl();
-            
-            try {
-                showInfo('inboxResponse', 'Loading sent emails...');
-                const response = await fetch(`${serverUrl}/sent`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.emails) {
-                    displayEmails(data.emails, 'sent');
-                    document.getElementById('inboxResponse').textContent = '';
-                } else {
-                    showResponse('inboxResponse', data, true);
-                }
-            } catch (error) {
-                showResponse('inboxResponse', { error: 'Load sent failed: ' + error.message }, true);
-            }
-        }
-        
-        async function loadStats() {
-            const serverUrl = getServerUrl();
-            
-            try {
-                const response = await fetch(`${serverUrl}/stats`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                const data = await response.json();
-                showResponse('inboxResponse', data, !response.ok);
-            } catch (error) {
-                showResponse('inboxResponse', { error: 'Load stats failed: ' + error.message }, true);
-            }
-        }
-        
-        function displayEmails(emails, type) {
-            const emailList = document.getElementById('emailList');
-            
-            if (emails.length === 0) {
-                emailList.innerHTML = '<div style="padding: 20px; text-align: center; color: #718096;">No emails found</div>';
-                return;
-            }
-            
-            emailList.innerHTML = emails.map(email => `
-                <div class="email-item" onclick="showEmailDetails('${email.id}', ${JSON.stringify(email).replace(/"/g, '&quot;')})">
-                    <div class="email-subject">${email.subject || '(No Subject)'}</div>
-                    <div class="email-meta">
-                        ${type === 'sent' ? 'To: ' + email.to.join(', ') : 'From: ' + email.from_email} | 
-                        ${new Date(email.timestamp).toLocaleString()} | 
-                        ${email.service} ${email.read ? '' : '(UNREAD)'}
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        function showEmailDetails(emailId, emailData) {
-            const email = typeof emailData === 'string' ? JSON.parse(emailData) : emailData;
-            alert(`Subject: ${email.subject}
+        emailList.innerHTML = emails
+          .map(
+            (email) => `
+      <div class="email-item" onclick='showEmailDetails(${JSON.stringify(
+        email
+      ).replace(/"/g, "&quot;")})'>
+        <div class="email-subject">${email.subject || "(No Subject)"}</div>
+        <div class="email-meta">
+          ${
+            type === "sent"
+              ? "To: " + email.to.join(", ")
+              : "From: " + email.from_email
+          }
+          | ${new Date(email.timestamp).toLocaleString()}
+          | ${email.service} ${email.read ? "" : "(UNREAD)"}
+        </div>
+      </div>`
+          )
+          .join("");
+      }
+
+      function showEmailDetails(email) {
+        if (typeof email === "string") email = JSON.parse(email);
+        alert(`Subject: ${email.subject}
 From: ${email.from_email}
-To: ${email.to.join(', ')}
-${email.cc && email.cc.length ? 'CC: ' + email.cc.join(', ') + '\n' : ''}
+To: ${email.to.join(", ")}
+${email.cc?.length ? "CC: " + email.cc.join(", ") + "\n" : ""}
 Date: ${new Date(email.timestamp).toLocaleString()}
 
 Message:
 ${email.body}`);
+      }
+
+      async function searchUsers() {
+        const query = $("searchQuery").value;
+        show("searchResponse", "Searching users...");
+        try {
+          const data = await apiCall(
+            `/users/search?q=${encodeURIComponent(query)}`,
+            "GET",
+            null,
+            true
+          );
+          show("searchResponse", data, "success");
+        } catch (e) {
+          show("searchResponse", e, "error");
         }
-        
-        async function searchUsers() {
-            const serverUrl = getServerUrl();
-            const query = document.getElementById('searchQuery').value;
-            
-            try {
-                showInfo('searchResponse', 'Searching users...');
-                const response = await fetch(`${serverUrl}/users/search?q=${encodeURIComponent(query)}`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                
-                const data = await response.json();
-                showResponse('searchResponse', data, !response.ok);
-            } catch (error) {
-                showResponse('searchResponse', { error: 'Search failed: ' + error.message }, true);
-            }
+      }
+
+      // Pre-fill server URL
+      window.addEventListener("load", () => {
+        const input = $("serverUrl");
+        if (
+          window.location.hostname &&
+          window.location.hostname !== "localhost"
+        ) {
+          input.value = `${window.location.protocol}//${window.location.hostname}:8000`;
         }
-        
-        // Auto-fill server URL with current page host if running locally
-        window.addEventListener('load', function() {
-            const serverUrlInput = document.getElementById('serverUrl');
-            if (window.location.hostname && window.location.hostname !== 'localhost') {
-                // If we're not on localhost, assume we want to connect to port 8000 on the same host
-                serverUrlInput.value = `http://${window.location.hostname}:8000`;
-            }
-        });
+      });
     </script>
-</body>
+  </body>
 </html>
