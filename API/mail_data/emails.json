@@ -3,14 +3,24 @@
     "id": "26f60b8a-cd33-4ad2-96bf-cd5c7a0875c0",
     "from_email": "user2@test.com",
     "from_service": "custom",
-    "to": [
-      "user2@test.com"
-    ],
+    "to": ["user2@test.com"],
     "cc": [],
     "bcc": [],
     "subject": "Test mail",
     "body": "this is a test mail",
     "timestamp": "2025-06-19T14:44:03.853177",
+    "read_by": []
+  },
+  {
+    "id": "786c0547-6023-43d8-aeab-fd2322c268d5",
+    "from_email": "user2@test.com",
+    "from_service": "custom",
+    "to": ["user2@test.com"],
+    "cc": [],
+    "bcc": [],
+    "subject": "Hey",
+    "body": "Hello..test1",
+    "timestamp": "2025-06-20T09:17:52.305488",
     "read_by": []
   }
 ]

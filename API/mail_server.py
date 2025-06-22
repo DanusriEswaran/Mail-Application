@@ -9,7 +9,6 @@ from urllib.parse import urlparse, parse_qs
 import threading
 import time
 from pathlib import Path
-from flask import sessions
 import traceback
 
 # Data storage setup
