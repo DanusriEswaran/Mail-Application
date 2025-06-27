@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import "./Dashboard.css";
 import { API_BASE_URL } from "../config";
+
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("inbox");
   const [inbox, setInbox] = useState([]);
@@ -11,11 +12,38 @@ const Dashboard = () => {
   const [recipient, setRecipient] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [attachment, setAttachment] = useState(""); // New attachment field
 
   const username = localStorage.getItem("username");
   const token = localStorage.getItem("token");
+  const [file, setFile] = useState(null);
 
-  // ✅ Fetch inbox
+
+  const handleFileUpload = async () => {
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("token", token);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.url) {
+      setAttachment(data.url); // Set attachment to uploaded file URL
+    } else {
+      alert("Failed to upload file");
+    }
+  } catch (err) {
+    console.error("File upload error:", err);
+    alert("Error uploading file");
+  }
+};
+
+
   const fetchInbox = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/inbox/${username}`);
@@ -28,7 +56,6 @@ const Dashboard = () => {
     }
   };
 
-  // ✅ Fetch storage
   const fetchStorage = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/storage/${username}`);
@@ -40,7 +67,7 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    fetchInbox(); // Show inbox by default
+    fetchInbox();
   }, []);
 
   const handleSend = async () => {
@@ -55,6 +82,7 @@ const Dashboard = () => {
           to: recipient,
           subject,
           body,
+          attachment, // Include attachment
         }),
       });
 
@@ -65,6 +93,7 @@ const Dashboard = () => {
         setRecipient("");
         setSubject("");
         setBody("");
+        setAttachment(""); // Reset attachment field
         fetchInbox();
       } else {
         alert(data.error || "Failed to send email.");
@@ -91,8 +120,8 @@ const Dashboard = () => {
       return (
         <div className="main-content">
           <h2>Storage</h2>
-          <p>Used: {storageInfo.used_gb} GB</p>
-          <p>Total: {storageInfo.total_gb} GB</p>
+          <p>Used: {storageInfo.used_mb} MB</p>
+          <p>Used (%): {storageInfo.percentage}%</p>
           <p>Status: {storageInfo.status}</p>
         </div>
       );
@@ -106,16 +135,27 @@ const Dashboard = () => {
         ) : (
           inbox.map((mail, index) => (
             <div key={index} className="mail-card">
-              <p>
-                <strong>From:</strong> {mail.from}
-              </p>
-              <p>
-                <strong>To:</strong> {mail.to}
-              </p>
-              <p>
-                <strong>Subject:</strong> {mail.subject}
-              </p>
-              <p>{mail.body}</p>
+              <p><strong>From:</strong> {mail.from}</p>
+              <p><strong>To:</strong> {mail.to}</p>
+              <p><strong>Subject:</strong> {mail.subject}</p>
+              <p><strong>Body:</strong> {mail.body}</p>
+              {mail.attachment && (
+  <p>
+    <strong>Attachment:</strong>{" "}
+    <a
+      href={`${API_BASE_URL}${mail.attachment}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      download
+    >
+      {mail.attachment.split("/").pop()}
+    </a>
+  </p>
+)}
+
+              {/* <p><strong>Composed:</strong> {mail.date_of_compose ? new Date(mail.date_of_compose).toLocaleString() : "N/A"}</p> */}
+              <p><strong>Received On:</strong> {mail.date_of_send ? new Date(mail.date_of_send).toLocaleString() : "N/A"}</p>
+              {/* <p><strong>Status:</strong> {mail.message_status || "N/A"}</p> */}
               <hr />
             </div>
           ))
@@ -181,6 +221,31 @@ const Dashboard = () => {
               value={body}
               onChange={(e) => setBody(e.target.value)}
             />
+            <div className="attachment-upload">
+  <label htmlFor="file-upload" style={{ cursor: "pointer" }}>
+    📎 Attach File
+  </label>
+  <input
+    id="file-upload"
+    type="file"
+    style={{ display: "none" }}
+    onChange={(e) => {
+      setFile(e.target.files[0]);
+    }}
+  />
+  <button onClick={handleFileUpload} disabled={!file}>
+    Upload
+  </button>
+  {attachment && (
+    <p>
+      <strong>Attachment:</strong>{" "}
+      <a href={attachment} target="_blank" rel="noopener noreferrer">
+        {attachment.split("/").pop()}
+      </a>
+    </p>
+  )}
+</div>
+
             <div className="compose-actions">
               <button onClick={handleSend}>Send</button>
               <button onClick={() => setShowCompose(false)}>Cancel</button>

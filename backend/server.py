@@ -3,7 +3,11 @@ import uuid, os, json, hashlib
 from cryptography.fernet import Fernet
 from pathlib import Path
 from flask_cors import CORS
+from datetime import datetime
+from flask import send_file
 
+UPLOAD_FOLDER = os.path.join("mail_data", "attachments")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Constants
 KEY_FILE = "secret.key"
 MAIL_ROOT = 'mail_data'
@@ -154,6 +158,32 @@ def register():
         "token": token
     })
 
+@app.route('/attachments/<filename>', methods=['GET'])
+def get_attachment(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    token = request.form.get('token')
+    sender = get_username_from_token(token)
+    if not sender:
+        return jsonify({"error": "Invalid session"}), 401
+
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No filename"}), 400
+
+    filename = str(uuid.uuid4()) + "_" + file.filename
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    file.save(filepath)
+
+    return jsonify({"message": "File uploaded", "url": f"/attachments/{filename}"})
+
+
 @app.route('/login', methods=['POST'])
 def login():
     print("Arrive1")
@@ -187,7 +217,6 @@ def login():
     else:
         return jsonify({"error": "User not found"}), 404
 
-
 @app.route('/send', methods=['POST'])
 def send_mail():
     data = request.json
@@ -200,6 +229,7 @@ def send_mail():
     recipient = data.get('to')
     subject = data.get('subject')
     body = data.get('body')
+    attachment = data.get('attachment', None)  # Optional field
 
     users = load_users()
     if sender not in users or recipient not in users:
@@ -215,11 +245,17 @@ def send_mail():
 
     setup_user_inbox_by_id(recipient_id)
 
+    now = datetime.now().isoformat()
+
     mail = {
         'from': sender,
         'to': recipient,
         'subject': subject,
-        'body': cipher.encrypt(body.encode()).decode()
+        'body': cipher.encrypt(body.encode()).decode(),
+        'date_of_compose': now,
+        'date_of_send': now,
+        'message_status': 'unread',
+        'attachment': attachment
     }
 
     inbox_file = os.path.join(MAIL_ROOT, recipient_id, 'inbox.json')
@@ -260,8 +296,13 @@ def view_inbox(username):
             "from": mail['from'],
             "to": mail['to'],
             "subject": mail['subject'],
-            "body": decrypted_body
+            "body": decrypted_body,
+            "date_of_compose": mail.get('date_of_compose'),
+            "date_of_send": mail.get('date_of_send'),
+            "message_status": mail.get('message_status'),
+            "attachment": mail.get('attachment')
         })
+
 
     return jsonify({"inbox": decrypted_inbox})
 
