@@ -96,14 +96,22 @@ def delete_session(token):
     sessions = [s for s in sessions if s['token'] != token]
     save_sessions(sessions)
 
-# Setup inbox
-def setup_user_inbox_by_id(user_id):
+# Setup inbox and sent folders
+def setup_user_folders_by_id(user_id):
     user_folder = os.path.join(MAIL_ROOT, user_id)
     inbox_file = os.path.join(user_folder, 'inbox.json')
+    sent_file = os.path.join(user_folder, 'sent.json')
     os.makedirs(user_folder, exist_ok=True)
     if not os.path.exists(inbox_file):
         with open(inbox_file, 'w') as f:
             json.dump([], f)
+    if not os.path.exists(sent_file):
+        with open(sent_file, 'w') as f:
+            json.dump([], f)
+
+def setup_user_inbox_by_id(user_id):
+    # Keep for backward compatibility, but use setup_user_folders_by_id instead
+    setup_user_folders_by_id(user_id)
 
 def get_folder_size(path):
     return sum(os.path.getsize(os.path.join(dp, f))
@@ -148,7 +156,7 @@ def register():
     save_users(users)
 
     user_id = generate_user_id(username, password)
-    setup_user_inbox_by_id(user_id)
+    setup_user_folders_by_id(user_id)
 
     token = create_session(username)
     return jsonify({
@@ -160,7 +168,13 @@ def register():
 
 @app.route('/attachments/<filename>', methods=['GET'])
 def get_attachment(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+    return send_from_directory(
+        UPLOAD_FOLDER, 
+        filename, 
+        as_attachment=True, 
+        download_name=filename.split("_", 1)[1]  # Extract original filename
+    )
+
 
 
 @app.route('/upload', methods=['POST'])
@@ -200,7 +214,7 @@ def login():
             decrypted = cipher.decrypt(users[username].encode()).decode()
             if decrypted == password:
                 user_id = generate_user_id(username, password)
-                setup_user_inbox_by_id(user_id)
+                setup_user_folders_by_id(user_id)
 
                 token = create_session(username)
                 print("Arrives")
@@ -235,18 +249,22 @@ def send_mail():
     if sender not in users or recipient not in users:
         return jsonify({"error": "Sender or recipient not found"}), 404
 
-    sender_id = generate_user_id(sender, cipher.decrypt(users[sender].encode()).decode())
-    recipient_id = generate_user_id(recipient, cipher.decrypt(users[recipient].encode()).decode())
+    sender_password = cipher.decrypt(users[sender].encode()).decode()
+    recipient_password = cipher.decrypt(users[recipient].encode()).decode()
+    sender_id = generate_user_id(sender, sender_password)
+    recipient_id = generate_user_id(recipient, recipient_password)
 
     if show_storage_status(sender_id)['status'] == 'full':
         return jsonify({"error": "Sender's inbox is full"}), 403
     if show_storage_status(recipient_id)['status'] == 'full':
         return jsonify({"error": "Recipient's inbox is full"}), 403
 
-    setup_user_inbox_by_id(recipient_id)
+    setup_user_folders_by_id(recipient_id)
+    setup_user_folders_by_id(sender_id)
 
     now = datetime.now().isoformat()
 
+    # Create mail object
     mail = {
         'from': sender,
         'to': recipient,
@@ -258,12 +276,21 @@ def send_mail():
         'attachment': attachment
     }
 
-    inbox_file = os.path.join(MAIL_ROOT, recipient_id, 'inbox.json')
-    with open(inbox_file, 'r') as f:
-        inbox = json.load(f)
-    inbox.append(mail)
-    with open(inbox_file, 'w') as f:
-        json.dump(inbox, f, indent=2)
+    # Add to recipient's inbox
+    recipient_inbox_file = os.path.join(MAIL_ROOT, recipient_id, 'inbox.json')
+    with open(recipient_inbox_file, 'r') as f:
+        recipient_inbox = json.load(f)
+    recipient_inbox.append(mail)
+    with open(recipient_inbox_file, 'w') as f:
+        json.dump(recipient_inbox, f, indent=2)
+
+    # Add to sender's sent folder
+    sender_sent_file = os.path.join(MAIL_ROOT, sender_id, 'sent.json')
+    with open(sender_sent_file, 'r') as f:
+        sender_sent = json.load(f)
+    sender_sent.append(mail)
+    with open(sender_sent_file, 'w') as f:
+        json.dump(sender_sent, f, indent=2)
 
     return jsonify({"message": "Email sent successfully"})
 
@@ -303,8 +330,45 @@ def view_inbox(username):
             "attachment": mail.get('attachment')
         })
 
-
     return jsonify({"inbox": decrypted_inbox})
+
+@app.route('/sent/<username>', methods=['GET'])
+def view_sent(username):
+    users = load_users()
+    if username not in users:
+        return jsonify({"error": "User not found"}), 404
+
+    try:
+        password = cipher.decrypt(users[username].encode()).decode()
+        user_id = generate_user_id(username, password)
+    except:
+        return jsonify({"error": "Decryption failed"}), 500
+
+    sent_file = os.path.join(MAIL_ROOT, user_id, 'sent.json')
+    if not os.path.exists(sent_file):
+        return jsonify({"sent": []})
+
+    with open(sent_file, 'r') as f:
+        sent = json.load(f)
+
+    decrypted_sent = []
+    for mail in sent:
+        try:
+            decrypted_body = cipher.decrypt(mail['body'].encode()).decode()
+        except:
+            decrypted_body = "[Failed to decrypt]"
+        decrypted_sent.append({
+            "from": mail['from'],
+            "to": mail['to'],
+            "subject": mail['subject'],
+            "body": decrypted_body,
+            "date_of_compose": mail.get('date_of_compose'),
+            "date_of_send": mail.get('date_of_send'),
+            "message_status": mail.get('message_status'),
+            "attachment": mail.get('attachment')
+        })
+
+    return jsonify({"sent": decrypted_sent})
 
 @app.route('/storage/<username>', methods=['GET'])
 def storage(username):
