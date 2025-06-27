@@ -45,7 +45,7 @@ const Dashboard = () => {
 
   const handleSend = async () => {
     try {
-      const res = await fetch("http://192.168.208.159:5000/send", {
+      const res = await fetch(`${API_BASE_URL}/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,7 +76,7 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    fetch("http://192.168.208.159:5000/logout", {
+    fetch(`${API_BASE_URL}/logout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
