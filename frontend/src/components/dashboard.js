@@ -1,7 +1,7 @@
 // src/components/Dashboard.js
 import React, { useEffect, useState } from "react";
 import "./Dashboard.css";
-
+import { API_BASE_URL } from "../config";
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("inbox");
   const [inbox, setInbox] = useState([]);
@@ -18,7 +18,7 @@ const Dashboard = () => {
   // ✅ Fetch inbox
   const fetchInbox = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/inbox/${username}`);
+      const res = await fetch(`${API_BASE_URL}/inbox/${username}`);
       const data = await res.json();
       if (data.inbox) {
         setInbox(data.inbox);
@@ -31,7 +31,7 @@ const Dashboard = () => {
   // ✅ Fetch storage
   const fetchStorage = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/storage/${username}`);
+      const res = await fetch(`${API_BASE_URL}/storage/${username}`);
       const data = await res.json();
       setStorageInfo(data);
     } catch (err) {
@@ -45,7 +45,7 @@ const Dashboard = () => {
 
   const handleSend = async () => {
     try {
-      const res = await fetch("http://localhost:5000/send", {
+      const res = await fetch("http://192.168.208.159:5000/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,7 +76,7 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    fetch("http://localhost:5000/logout", {
+    fetch("http://192.168.208.159:5000/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),

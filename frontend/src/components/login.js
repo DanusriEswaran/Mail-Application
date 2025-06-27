@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
-
+import { API_BASE_URL } from "../config";
 function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -12,11 +12,11 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://192.168.4.56:5000/login", {
+      const res = await axios.post("http://192.168.208.159:5000/login", {
         username,
         password,
       });
-
+      console.log(res);
       setMessage(`Welcome ${res.data.username}`);
 
       // Save user info to localStorage (optional but useful)

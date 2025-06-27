@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
-
+import { API_BASE_URL } from "../config";
 function Register() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -13,15 +13,21 @@ function Register() {
     e.preventDefault();
 
     try {
-      const response = await axios.post("http://192.168.4.56:5000/register", {
+      const response = await axios.post(`${API_BASE_URL}/register`, {
         username,
         password,
       });
 
       setMessage(response.data.message);
-      if (response.data.message === "User registered successfully") {
-        navigate("/dashboard");
-      }
+      if (response.data.token) {
+  // Save login info like in login.js
+  localStorage.setItem("token", response.data.token);
+  localStorage.setItem("username", response.data.username);
+  localStorage.setItem("user_id", response.data.user_id);
+
+  navigate("/dashboard");
+}
+
       setUsername("");
       setPassword("");
     } catch (error) {

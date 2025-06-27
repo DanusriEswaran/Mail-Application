@@ -146,10 +146,17 @@ def register():
     user_id = generate_user_id(username, password)
     setup_user_inbox_by_id(user_id)
 
-    return jsonify({"message": "User registered successfully", "user_id": user_id})
+    token = create_session(username)
+    return jsonify({
+        "message": "User registered successfully",
+        "user_id": user_id,
+        "username": username,
+        "token": token
+    })
 
 @app.route('/login', methods=['POST'])
 def login():
+    print("Arrive1")
     data = request.json
     username = data.get('username')
     password = data.get('password')
@@ -166,7 +173,7 @@ def login():
                 setup_user_inbox_by_id(user_id)
 
                 token = create_session(username)
-
+                print("Arrives")
                 return jsonify({
                     "message": "Login successful",
                     "username": username,
