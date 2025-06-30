@@ -3,10 +3,19 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
 import { API_BASE_URL } from "../config";
+import { FaUser, FaEnvelope, FaEye, FaEyeSlash } from "react-icons/fa";
+
 function Register() {
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
@@ -15,20 +24,21 @@ function Register() {
     try {
       const response = await axios.post(`${API_BASE_URL}/register`, {
         username,
+        email,
         password,
       });
 
       setMessage(response.data.message);
+
       if (response.data.token) {
-  // Save login info like in login.js
-  localStorage.setItem("token", response.data.token);
-  localStorage.setItem("username", response.data.username);
-  localStorage.setItem("user_id", response.data.user_id);
-
-  navigate("/dashboard");
-}
-
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("email", response.data.email);
+        localStorage.setItem("user_id", response.data.user_id);
+        localStorage.setItem("username", response.data.username);
+        navigate("/dashboard");
+      }
       setUsername("");
+      setEmail("");
       setPassword("");
     } catch (error) {
       if (error.response) {
@@ -39,46 +49,50 @@ function Register() {
     }
   };
 
-  const goToLogin = () => {
-    navigate("/login");
-  };
-
   return (
     <div className="auth-container">
-      <h2>Register</h2>
+      <h2>Create Your Account</h2>
       <form onSubmit={handleRegister}>
-        <div>
-          <label>User mail: </label>
-          <br />
+        <div className="input-wrapper">
           <input
             type="text"
+            placeholder="Enter your username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
           />
+          <FaUser className="input-icon" />
         </div>
-        <br />
-        <div>
-          <label>Password: </label>
-          <br />
+
+        <div className="input-wrapper">
           <input
-            type="password"
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <FaEnvelope className="input-icon" />
+        </div>
+
+        <div className="input-wrapper">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <span
+            onClick={togglePasswordVisibility}
+            className="input-icon clickable"
+          >
+            {showPassword ? <FaEyeSlash /> : <FaEye />}
+          </span>
         </div>
-        <br />
+
         <button type="submit">Register</button>
       </form>
-
-      <button
-        type="button"
-        className="secondary-button center-button"
-        onClick={goToLogin}
-      >
-        Go to Login
-      </button>
 
       {message && <p style={{ marginTop: "10px" }}>{message}</p>}
     </div>

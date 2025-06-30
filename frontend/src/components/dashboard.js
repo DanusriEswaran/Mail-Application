@@ -1,4 +1,3 @@
-// src/components/Dashboard.js
 import React, { useEffect, useState } from "react";
 import "./Dashboard.css";
 import { API_BASE_URL } from "../config";
@@ -18,8 +17,10 @@ const Dashboard = () => {
   const [attachment, setAttachment] = useState("");
 
   const username = localStorage.getItem("username");
+  const email = localStorage.getItem("email");
   const token = localStorage.getItem("token");
   const [file, setFile] = useState(null);
+  const [trash, setTrash] = useState([]);
 
   const handleFileUpload = async () => {
     if (!file) return;
@@ -47,8 +48,9 @@ const Dashboard = () => {
 
   const fetchInbox = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/inbox/${username}`);
+      const res = await fetch(`${API_BASE_URL}/inbox/${email}`);
       const data = await res.json();
+      console.log("Inbox data: ", data);
       if (data.inbox) {
         setInbox(data.inbox);
       }
@@ -59,7 +61,7 @@ const Dashboard = () => {
 
   const fetchSent = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/sent/${username}`);
+      const res = await fetch(`${API_BASE_URL}/sent/${email}`);
       const data = await res.json();
       if (data.sent) {
         setSent(data.sent);
@@ -71,7 +73,7 @@ const Dashboard = () => {
 
   const fetchStorage = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/storage/${username}`);
+      const res = await fetch(`${API_BASE_URL}/storage/${email}`);
       const data = await res.json();
       setStorageInfo(data);
     } catch (err) {
@@ -132,31 +134,45 @@ const Dashboard = () => {
   };
 
   const getCurrentEmails = () => {
-    return activeTab === "sent" ? sent : inbox;
+    if (activeTab === "sent") return sent;
+    if (activeTab === "trash") return trash;
+    return inbox;
   };
 
-  const filteredEmails = getCurrentEmails().filter(email => 
-    email.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    email.to.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    email.body.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredEmails = getCurrentEmails().filter(
+    (email) =>
+      email.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.to.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.body.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
+
     const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return "Today";
-    if (diffDays === 2) return "Yesterday";
-    if (diffDays <= 7) return date.toLocaleDateString('en-US', { weekday: 'short' });
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    const dateOnly = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
+    const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const diffTime = nowOnly - dateOnly;
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7)
+      return date.toLocaleDateString("en-US", { weekday: "short" });
+
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const getInitials = (email) => {
-    return email.split('@')[0].charAt(0).toUpperCase();
+    return email.split("@")[0].charAt(0).toUpperCase();
   };
 
   const renderEmailList = () => (
@@ -164,15 +180,25 @@ const Dashboard = () => {
       {filteredEmails.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">📫</div>
-          <h3>{activeTab === "sent" ? "No sent emails" : "Your inbox is empty"}</h3>
-          <p>{activeTab === "sent" ? "No emails sent yet." : "No emails found matching your search."}</p>
+          <h3>
+            {activeTab === "sent" ? "No sent emails" : "Your inbox is empty"}
+          </h3>
+          <p>
+            {activeTab === "sent"
+              ? "No emails sent yet."
+              : "No emails found matching your search."}
+          </p>
         </div>
       ) : (
         filteredEmails.map((mail, index) => (
-          <div 
-            key={index} 
-            className={`email-item ${selectedEmail === index ? 'selected' : ''}`}
-            onClick={() => setSelectedEmail(selectedEmail === index ? null : index)}
+          <div
+            key={index}
+            className={`email-item ${
+              selectedEmail === index ? "selected" : ""
+            }`}
+            onClick={() =>
+              setSelectedEmail(selectedEmail === index ? null : index)
+            }
           >
             <div className="email-item-header">
               <div className="sender-avatar">
@@ -180,26 +206,40 @@ const Dashboard = () => {
               </div>
               <div className="email-meta">
                 <div className="sender-name">
-                  {activeTab === "sent" 
-                    ? `To: ${mail.to.split('@')[0]}` 
-                    : mail.from.split('@')[0]
-                  }
+                  {activeTab === "sent"
+                    ? `To: ${mail.to.split("@")[0]}`
+                    : mail.from.split("@")[0]}
                 </div>
-                <div className="email-subject">{mail.subject || "No Subject"}</div>
-                <div className="email-preview">{mail.body.substring(0, 100)}...</div>
+                <div className="email-subject">
+                  {mail.subject || "No Subject"}
+                </div>
+                <div className="email-preview">
+                  {mail.body.substring(0, 100)}...
+                </div>
               </div>
               <div className="email-date">{formatDate(mail.date_of_send)}</div>
-              {mail.attachment && <div className="attachment-indicator">📎</div>}
+              {mail.attachment && (
+                <div className="attachment-indicator">📎</div>
+              )}
             </div>
-            
+
             {selectedEmail === index && (
               <div className="email-detail">
                 <div className="email-full-header">
                   <h4>{mail.subject || "No Subject"}</h4>
                   <div className="email-addresses">
-                    <div><strong>From:</strong> {mail.from}</div>
-                    <div><strong>To:</strong> {mail.to}</div>
-                    <div><strong>Date:</strong> {mail.date_of_send ? new Date(mail.date_of_send).toLocaleString() : "N/A"}</div>
+                    <div>
+                      <strong>From:</strong> {mail.from}
+                    </div>
+                    <div>
+                      <strong>To:</strong> {mail.to}
+                    </div>
+                    <div>
+                      <strong>Date:</strong>{" "}
+                      {mail.date_of_send
+                        ? new Date(mail.date_of_send).toLocaleString()
+                        : "N/A"}
+                    </div>
                   </div>
                 </div>
                 <div className="email-body">{mail.body}</div>
@@ -214,7 +254,12 @@ const Dashboard = () => {
                         download
                         className="attachment-link"
                       >
-                        {mail.attachment.split("/").pop().split("_").slice(1).join("_")}
+                        {mail.attachment
+                          .split("/")
+                          .pop()
+                          .split("_")
+                          .slice(1)
+                          .join("_")}
                       </a>
                     </div>
                   </div>
@@ -233,8 +278,8 @@ const Dashboard = () => {
         <h2>Storage Usage</h2>
         <div className="storage-info">
           <div className="storage-bar">
-            <div 
-              className="storage-fill" 
+            <div
+              className="storage-fill"
               style={{ width: `${storageInfo.percentage}%` }}
             ></div>
           </div>
@@ -254,7 +299,7 @@ const Dashboard = () => {
       <header className="gmail-header">
         <div className="header-left">
           <div className="gmail-logo">
-            <span className="logo-text">✉️ Mail</span>
+            <img src="logo.png" alt="Logo" className="logo-img" />
           </div>
           <div className="search-container">
             <input
@@ -264,7 +309,9 @@ const Dashboard = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <button className="search-btn">🔍</button>
+            <button className="search-btn">
+              <i className="fas fa-search"></i>
+            </button>
           </div>
         </div>
         <div className="header-right">
@@ -281,17 +328,17 @@ const Dashboard = () => {
       <div className="gmail-body">
         {/* Sidebar */}
         <aside className="gmail-sidebar">
-          <button 
+          <button
             className="compose-button"
             onClick={() => setShowCompose(true)}
           >
-            <span className="compose-icon">✏️</span>
+            <i className="fas fa-pen-nib compose-icon"></i>
             Compose
           </button>
-          
+
           <nav className="sidebar-nav">
-            <div 
-              className={`nav-item ${activeTab === 'inbox' ? 'active' : ''}`}
+            <div
+              className={`nav-item ${activeTab === "inbox" ? "active" : ""}`}
               onClick={() => {
                 setActiveTab("inbox");
                 setSelectedEmail(null);
@@ -302,9 +349,9 @@ const Dashboard = () => {
               <span className="nav-text">Inbox</span>
               <span className="nav-count">{inbox.length}</span>
             </div>
-            
-            <div 
-              className={`nav-item ${activeTab === 'sent' ? 'active' : ''}`}
+
+            <div
+              className={`nav-item ${activeTab === "sent" ? "active" : ""}`}
               onClick={() => {
                 setActiveTab("sent");
                 setSelectedEmail(null);
@@ -315,9 +362,9 @@ const Dashboard = () => {
               <span className="nav-text">Sent</span>
               <span className="nav-count">{sent.length}</span>
             </div>
-            
-            <div 
-              className={`nav-item ${activeTab === 'storage' ? 'active' : ''}`}
+
+            <div
+              className={`nav-item ${activeTab === "storage" ? "active" : ""}`}
               onClick={() => {
                 setActiveTab("storage");
                 setSelectedEmail(null);
@@ -332,7 +379,9 @@ const Dashboard = () => {
 
         {/* Main Content */}
         <main className="gmail-main">
-          {activeTab === "storage" && storageInfo ? renderStorageView() : renderEmailList()}
+          {activeTab === "storage" && storageInfo
+            ? renderStorageView()
+            : renderEmailList()}
         </main>
       </div>
 
@@ -342,14 +391,14 @@ const Dashboard = () => {
           <div className="compose-modal">
             <div className="compose-header">
               <h3>New Message</h3>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => setShowCompose(false)}
               >
                 ✕
               </button>
             </div>
-            
+
             <div className="compose-form">
               <div className="form-row">
                 <label>To</label>
@@ -361,7 +410,7 @@ const Dashboard = () => {
                   required
                 />
               </div>
-              
+
               <div className="form-row">
                 <label>Subject</label>
                 <input
@@ -371,7 +420,7 @@ const Dashboard = () => {
                   onChange={(e) => setSubject(e.target.value)}
                 />
               </div>
-              
+
               <div className="form-row message-row">
                 <textarea
                   placeholder="Compose your message..."
@@ -380,7 +429,7 @@ const Dashboard = () => {
                   rows="12"
                 />
               </div>
-              
+
               <div className="attachment-section">
                 <input
                   type="file"
@@ -402,19 +451,26 @@ const Dashboard = () => {
                 {attachment && (
                   <div className="attachment-preview">
                     <span className="attachment-icon">📎</span>
-                    <a href={attachment} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={attachment}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       {attachment.split("/").pop()}
                     </a>
                   </div>
                 )}
               </div>
             </div>
-            
+
             <div className="compose-footer">
               <button className="send-btn" onClick={handleSend}>
                 Send
               </button>
-              <button className="cancel-btn" onClick={() => setShowCompose(false)}>
+              <button
+                className="cancel-btn"
+                onClick={() => setShowCompose(false)}
+              >
                 Cancel
               </button>
             </div>
