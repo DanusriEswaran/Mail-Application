@@ -100,15 +100,15 @@ def delete_session(token):
 # Setup inbox and sent folders
 def setup_user_folders(email):
     user_folder = os.path.join(MAIL_ROOT, email)
-    inbox_file = os.path.join(user_folder, 'inbox.json')
-    sent_file = os.path.join(user_folder, 'sent.json')
+    folders = ['inbox.json', 'sent.json', 'drafts.json', 'templates.json']
+    
     os.makedirs(user_folder, exist_ok=True)
-    if not os.path.exists(inbox_file):
-        with open(inbox_file, 'w') as f:
-            json.dump([], f)
-    if not os.path.exists(sent_file):
-        with open(sent_file, 'w') as f:
-            json.dump([], f)
+    
+    for folder in folders:
+        folder_path = os.path.join(user_folder, folder)
+        if not os.path.exists(folder_path):
+            with open(folder_path, 'w') as f:
+                json.dump([], f)
 
 def setup_user_inbox(email):
     # Keep for backward compatibility, but use setup_user_folders instead
@@ -221,23 +221,44 @@ def get_attachment(filename):
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    token = request.form.get('token')
-    sender = get_email_from_token(token)
-    if not sender:
-        return jsonify({"error": "Invalid session"}), 401
+    try:
+        token = request.form.get('token')
+        email = get_email_from_token(token)
+        if not email:
+            return jsonify({"error": "Invalid session"}), 401
+        
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        # Create uploads directory if it doesn't exist
+        upload_folder = os.path.join('uploads', email)
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        # Generate unique filename
+        filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+        file_path = os.path.join(upload_folder, filename)
+        
+        # Save file
+        file.save(file_path)
+        
+        # Return URL that frontend expects
+        file_url = f"/uploads/{email}/{filename}"
+        return jsonify({"url": file_url})
+        
+    except Exception as e:
+        return jsonify({"error": "File upload failed"}), 500
 
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
-
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No filename"}), 400
-
-    filename = str(uuid.uuid4()) + "_" + file.filename
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-    file.save(filepath)
-
-    return jsonify({"message": "File uploaded", "url": f"/attachments/{filename}"})
+@app.route('/uploads/<email>/<filename>')
+def serve_uploaded_file(email, filename):
+    try:
+        upload_folder = os.path.join('uploads', email)
+        return send_from_directory(upload_folder, filename)
+    except Exception as e:
+        return jsonify({"error": "File not found"}), 404
 
 @app.route('/send', methods=['POST'])
 def send_mail():
@@ -370,12 +391,25 @@ def view_sent(email):
     return jsonify({"sent": decrypted_sent})
 
 @app.route('/storage/<email>', methods=['GET'])
-def storage(email):
+def get_storage_info(email):
     users = load_users()
     if email not in users:
         return jsonify({"error": "User not found"}), 404
-
-    return jsonify(show_storage_status(email))
+    
+    try:
+        storage_info = show_storage_status(email)  # Assuming this function exists
+        
+        # Convert to expected frontend format
+        storage_data = {
+            "used_mb": storage_info.get("used_mb", 0),
+            "total_mb": storage_info.get("total_mb", 100),  # Default 100MB
+            "percentage": storage_info.get("percentage", 0),
+            "status": storage_info.get("status", "Normal")
+        }
+        
+        return jsonify(storage_data)
+    except Exception as e:
+        return jsonify({"error": "Failed to get storage info"}), 500
 
 @app.route('/delete_mail', methods=['POST'])
 def delete_mail():
@@ -432,39 +466,48 @@ def view_trash(email):
     users = load_users()
     if email not in users:
         return jsonify({"error": "User not found"}), 404
-    user_data = users[email]
+    
     deleted_emails = []
-    now = datetime.utcnow()
+    now = datetime.now()
+    
+    # Check inbox for deleted emails
+    inbox_file = os.path.join(MAIL_ROOT, email, 'inbox.json')
+    if os.path.exists(inbox_file):
+        with open(inbox_file, 'r') as f:
+            inbox = json.load(f)
+        
+        for mail in inbox:
+            if mail.get('message_status') == 'deleted':
+                try:
+                    decrypted_body = cipher.decrypt(mail['body'].encode()).decode()
+                except:
+                    decrypted_body = "[Failed to decrypt]"
+                
+                mail_copy = mail.copy()
+                mail_copy['body'] = decrypted_body
+                mail_copy['original_folder'] = 'inbox'
+                deleted_emails.append(mail_copy)
+    
+    # Check sent folder for deleted emails
+    sent_file = os.path.join(MAIL_ROOT, email, 'sent.json')
+    if os.path.exists(sent_file):
+        with open(sent_file, 'r') as f:
+            sent = json.load(f)
+        
+        for mail in sent:
+            if mail.get('message_status') == 'deleted':
+                try:
+                    decrypted_body = cipher.decrypt(mail['body'].encode()).decode()
+                except:
+                    decrypted_body = "[Failed to decrypt]"
+                
+                mail_copy = mail.copy()
+                mail_copy['body'] = decrypted_body
+                mail_copy['original_folder'] = 'sent'
+                deleted_emails.append(mail_copy)
+    
+    return jsonify({"trash": deleted_emails})
 
-    updated_inbox = []
-    for mail in user_data.get('inbox', []):
-        if mail.get('message_status') == 'deleted':
-            deleted_time = datetime.strptime(mail.get('deleted_at', mail.get('date_of_send')), "%Y-%m-%d %H:%M:%S")
-            if now - deleted_time > timedelta(hours=TRASH_EXPIRY_HOURS):
-                continue  # Skip adding (permanently delete)
-            mail['original_folder'] = 'inbox'
-            deleted_emails.append(mail)
-        else:
-            updated_inbox.append(mail)
-
-    # Process sent
-    updated_sent = []
-    for mail in user_data.get('sent', []):
-        if mail.get('message_status') == 'deleted':
-            deleted_time = datetime.strptime(mail.get('deleted_at', mail.get('date_of_send')), "%Y-%m-%d %H:%M:%S")
-            if now - deleted_time > timedelta(hours=TRASH_EXPIRY_HOURS):
-                continue
-            mail['original_folder'] = 'sent'
-            deleted_emails.append(mail)
-        else:
-            updated_sent.append(mail)
-
-    # Update user data
-    users[email]['inbox'] = updated_inbox
-    users[email]['sent'] = updated_sent
-    save_users(users)
-
-    return jsonify({"trash": deleted_emails}), 200
   
     
 
@@ -474,6 +517,424 @@ def logout():
     delete_session(token)
     return jsonify({"message": "Logged out successfully"})
 
+
+@app.route('/mark_read', methods=['POST'])
+def mark_read():
+    data = request.json
+    token = data.get('token')
+    email = get_email_from_token(token)
+    if not email:
+        return jsonify({"error": "Invalid session"}), 401
+    
+    target_fields = data.get('mail')
+    active = data.get('activeTab', 'inbox')
+    
+    file_path = f'mail_data/{email}/{active}.json'
+    
+    try:
+        with open(file_path, 'r') as f:
+            mails = json.load(f)
+        
+        for mail in mails:
+            if (mail.get('from') == target_fields.get('from') and
+                mail.get('to') == target_fields.get('to') and
+                mail.get('subject') == target_fields.get('subject') and
+                mail.get('date_of_send') == target_fields.get('date_of_send')):
+                mail['message_status'] = 'read'
+                break
+        
+        with open(file_path, 'w') as f:
+            json.dump(mails, f, indent=2)
+        
+        return jsonify({"message": "Email marked as read"})
+    except Exception as e:
+        return jsonify({"error": "Failed to mark email"}), 500
+
+@app.route('/mark_unread', methods=['POST'])
+def mark_unread():
+    data = request.json
+    token = data.get('token')
+    email = get_email_from_token(token)
+    if not email:
+        return jsonify({"error": "Invalid session"}), 401
+    
+    target_fields = data.get('mail')
+    active = data.get('activeTab', 'inbox')
+    
+    file_path = f'mail_data/{email}/{active}.json'
+    
+    try:
+        with open(file_path, 'r') as f:
+            mails = json.load(f)
+        
+        for mail in mails:
+            if (mail.get('from') == target_fields.get('from') and
+                mail.get('to') == target_fields.get('to') and
+                mail.get('subject') == target_fields.get('subject') and
+                mail.get('date_of_send') == target_fields.get('date_of_send')):
+                mail['message_status'] = 'unread'
+                break
+        
+        with open(file_path, 'w') as f:
+            json.dump(mails, f, indent=2)
+        
+        return jsonify({"message": "Email marked as unread"})
+    except Exception as e:
+        return jsonify({"error": "Failed to mark email"}), 500
+
+# 2. Search Functionality
+@app.route('/search', methods=['POST'])
+def search_emails():
+    data = request.json
+    token = data.get('token')
+    email = get_email_from_token(token)
+    if not email:
+        return jsonify({"error": "Invalid session"}), 401
+    
+    query = data.get('query', '').lower()
+    folder = data.get('folder', 'inbox')
+    
+    file_path = f'mail_data/{email}/{folder}.json'
+    
+    try:
+        if not os.path.exists(file_path):
+            return jsonify({"results": []})
+            
+        with open(file_path, 'r') as f:
+            mails = json.load(f)
+        
+        results = []
+        for mail in mails:
+            if mail.get('message_status') == 'deleted' and folder != 'trash':
+                continue
+                
+            try:
+                decrypted_body = cipher.decrypt(mail['body'].encode()).decode()
+            except:
+                decrypted_body = ""
+            
+            if (query in mail.get('subject', '').lower() or
+                query in mail.get('from', '').lower() or
+                query in decrypted_body.lower()):
+                
+                results.append({
+                    "from": mail['from'],
+                    "to": mail['to'],
+                    "subject": mail['subject'],
+                    "body": decrypted_body,
+                    "date_of_send": mail.get('date_of_send'),
+                    "date_of_compose": mail.get('date_of_compose'),
+                    "message_status": mail.get('message_status'),
+                    "attachment": mail.get('attachment')
+                })
+        
+        return jsonify({"results": results})
+    except Exception as e:
+        return jsonify({"error": "Search failed"}), 500
+
+# 3. Draft Functionality
+@app.route('/save_draft', methods=['POST'])
+def save_draft():
+    data = request.json
+    token = data.get('token')
+    sender = get_email_from_token(token)
+    if not sender:
+        return jsonify({"error": "Invalid session"}), 401
+    
+    draft = {
+        'from': sender,
+        'to': data.get('to', ''),
+        'subject': data.get('subject', ''),
+        'body': cipher.encrypt(data.get('body', '').encode()).decode(),
+        'date_of_compose': datetime.now().isoformat(),
+        'message_status': 'draft',
+        'attachment': data.get('attachment', None)
+    }
+    
+    drafts_file = os.path.join(MAIL_ROOT, sender, 'drafts.json')
+    
+    try:
+        with open(drafts_file, 'r') as f:
+            drafts = json.load(f)
+        
+        drafts.append(draft)
+        
+        with open(drafts_file, 'w') as f:
+            json.dump(drafts, f, indent=2)
+        
+        return jsonify({"message": "Draft saved successfully"})
+    except Exception as e:
+        return jsonify({"error": "Failed to save draft"}), 500
+
+@app.route('/drafts/<email>', methods=['GET'])
+def view_drafts(email):
+    users = load_users()
+    if email not in users:
+        return jsonify({"error": "User not found"}), 404
+    
+    drafts_file = os.path.join(MAIL_ROOT, email, 'drafts.json')
+    if not os.path.exists(drafts_file):
+        return jsonify({"drafts": []})
+    
+    try:
+        with open(drafts_file, 'r') as f:
+            drafts = json.load(f)
+        
+        decrypted_drafts = []
+        for draft in drafts:
+            try:
+                decrypted_body = cipher.decrypt(draft['body'].encode()).decode()
+            except:
+                decrypted_body = "[Failed to decrypt]"
+            
+            decrypted_drafts.append({
+                "from": draft['from'],
+                "to": draft['to'],
+                "subject": draft['subject'],
+                "body": decrypted_body,
+                "date_of_compose": draft.get('date_of_compose'),
+                "message_status": draft.get('message_status'),
+                "attachment": draft.get('attachment')
+            })
+        
+        return jsonify({"drafts": decrypted_drafts})
+    except Exception as e:
+        return jsonify({"error": "Failed to load drafts"}), 500
+
+# 4. Permanent Delete and Restore
+@app.route('/permanent_delete', methods=['POST'])
+def permanent_delete():
+    data = request.json
+    token = data.get('token')
+    email = get_email_from_token(token)
+    if not email:
+        return jsonify({"error": "Invalid session"}), 401
+    
+    target_fields = data.get('mail')
+    original_folder = target_fields.get('original_folder', 'inbox')
+    
+    file_path = f'mail_data/{email}/{original_folder}.json'
+    
+    try:
+        with open(file_path, 'r') as f:
+            mails = json.load(f)
+        
+        updated_mails = []
+        for mail in mails:
+            if not (mail.get('from') == target_fields.get('from') and
+                   mail.get('to') == target_fields.get('to') and
+                   mail.get('subject') == target_fields.get('subject') and
+                   mail.get('date_of_send') == target_fields.get('date_of_send')):
+                updated_mails.append(mail)
+        
+        with open(file_path, 'w') as f:
+            json.dump(updated_mails, f, indent=2)
+        
+        return jsonify({"message": "Email permanently deleted"})
+    except Exception as e:
+        return jsonify({"error": "Failed to delete email"}), 500
+
+@app.route('/restore_email', methods=['POST'])
+def restore_email():
+    data = request.json
+    token = data.get('token')
+    email = get_email_from_token(token)
+    if not email:
+        return jsonify({"error": "Invalid session"}), 401
+    
+    target_fields = data.get('mail')
+    original_folder = target_fields.get('original_folder', 'inbox')
+    
+    file_path = f'mail_data/{email}/{original_folder}.json'
+    
+    try:
+        with open(file_path, 'r') as f:
+            mails = json.load(f)
+        
+        for mail in mails:
+            if (mail.get('from') == target_fields.get('from') and
+                mail.get('to') == target_fields.get('to') and
+                mail.get('subject') == target_fields.get('subject') and
+                mail.get('date_of_send') == target_fields.get('date_of_send')):
+                mail['message_status'] = 'unread'
+                break
+        
+        with open(file_path, 'w') as f:
+            json.dump(mails, f, indent=2)
+        
+        return jsonify({"message": "Email restored successfully"})
+    except Exception as e:
+        return jsonify({"error": "Failed to restore email"}), 500
+
+# 5. Email Statistics
+@app.route('/stats/<email>', methods=['GET'])
+def get_email_stats(email):
+    users = load_users()
+    if email not in users:
+        return jsonify({"error": "User not found"}), 404
+    
+    stats = {
+        "total_received": 0,
+        "total_sent": 0,
+        "unread_count": 0,
+        "deleted_count": 0,
+        "draft_count": 0,
+        "storage_used": show_storage_status(email)
+    }
+    
+    try:
+        # Count inbox emails
+        inbox_file = os.path.join(MAIL_ROOT, email, 'inbox.json')
+        if os.path.exists(inbox_file):
+            with open(inbox_file, 'r') as f:
+                inbox = json.load(f)
+            stats["total_received"] = len([m for m in inbox if m.get('message_status') != 'deleted'])
+            stats["unread_count"] = len([m for m in inbox if m.get('message_status') == 'unread'])
+            stats["deleted_count"] += len([m for m in inbox if m.get('message_status') == 'deleted'])
+        
+        # Count sent emails
+        sent_file = os.path.join(MAIL_ROOT, email, 'sent.json')
+        if os.path.exists(sent_file):
+            with open(sent_file, 'r') as f:
+                sent = json.load(f)
+            stats["total_sent"] = len([m for m in sent if m.get('message_status') != 'deleted'])
+            stats["deleted_count"] += len([m for m in sent if m.get('message_status') == 'deleted'])
+        
+        # Count drafts
+        drafts_file = os.path.join(MAIL_ROOT, email, 'drafts.json')
+        if os.path.exists(drafts_file):
+            with open(drafts_file, 'r') as f:
+                drafts = json.load(f)
+            stats["draft_count"] = len(drafts)
+        
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({"error": "Failed to get stats"}), 500
+
+# 6. Email Templates
+@app.route('/save_template', methods=['POST'])
+def save_template():
+    data = request.json
+    token = data.get('token')
+    email = get_email_from_token(token)
+    if not email:
+        return jsonify({"error": "Invalid session"}), 401
+    
+    template = {
+        'name': data.get('name'),
+        'subject': data.get('subject'),
+        'body': data.get('body'),
+        'created_at': datetime.now().isoformat()
+    }
+    
+    templates_file = os.path.join(MAIL_ROOT, email, 'templates.json')
+    
+    try:
+        with open(templates_file, 'r') as f:
+            templates = json.load(f)
+        
+        templates.append(template)
+        
+        with open(templates_file, 'w') as f:
+            json.dump(templates, f, indent=2)
+        
+        return jsonify({"message": "Template saved successfully"})
+    except Exception as e:
+        return jsonify({"error": "Failed to save template"}), 500
+
+@app.route('/templates/<email>', methods=['GET'])
+def get_templates(email):
+    users = load_users()
+    if email not in users:
+        return jsonify({"error": "User not found"}), 404
+    
+    templates_file = os.path.join(MAIL_ROOT, email, 'templates.json')
+    if not os.path.exists(templates_file):
+        return jsonify({"templates": []})
+    
+    try:
+        with open(templates_file, 'r') as f:
+            templates = json.load(f)
+        
+        return jsonify({"templates": templates})
+    except Exception as e:
+        return jsonify({"error": "Failed to load templates"}), 500
+
+# 7. Bulk Operations
+@app.route('/bulk_action', methods=['POST'])
+def bulk_action():
+    data = request.json
+    token = data.get('token')
+    email = get_email_from_token(token)
+    if not email:
+        return jsonify({"error": "Invalid session"}), 401
+    
+    action = data.get('action')
+    emails = data.get('emails')
+    folder = data.get('folder', 'inbox')
+    
+    file_path = f'mail_data/{email}/{folder}.json'
+    
+    try:
+        with open(file_path, 'r') as f:
+            mails = json.load(f)
+        
+        updated_count = 0
+        for mail in mails:
+            for target_email in emails:
+                if (mail.get('from') == target_email.get('from') and
+                    mail.get('to') == target_email.get('to') and
+                    mail.get('subject') == target_email.get('subject') and
+                    mail.get('date_of_send') == target_email.get('date_of_send')):
+                    
+                    if action == 'delete':
+                        mail['message_status'] = 'deleted'
+                    elif action == 'mark_read':
+                        mail['message_status'] = 'read'
+                    elif action == 'mark_unread':
+                        mail['message_status'] = 'unread'
+                    
+                    updated_count += 1
+                    break
+        
+        with open(file_path, 'w') as f:
+            json.dump(mails, f, indent=2)
+        
+        return jsonify({"message": f"Bulk action completed on {updated_count} emails"})
+    except Exception as e:
+        return jsonify({"error": "Bulk action failed"}), 500
+
+# 8. Delete Draft
+@app.route('/delete_draft', methods=['POST'])
+def delete_draft():
+    data = request.json
+    token = data.get('token')
+    email = get_email_from_token(token)
+    if not email:
+        return jsonify({"error": "Invalid session"}), 401
+    
+    target_fields = data.get('draft')
+    
+    drafts_file = os.path.join(MAIL_ROOT, email, 'drafts.json')
+    
+    try:
+        with open(drafts_file, 'r') as f:
+            drafts = json.load(f)
+        
+        updated_drafts = []
+        for draft in drafts:
+            if not (draft.get('from') == target_fields.get('from') and
+                   draft.get('to') == target_fields.get('to') and
+                   draft.get('subject') == target_fields.get('subject') and
+                   draft.get('date_of_compose') == target_fields.get('date_of_compose')):
+                updated_drafts.append(draft)
+        
+        with open(drafts_file, 'w') as f:
+            json.dump(updated_drafts, f, indent=2)
+        
+        return jsonify({"message": "Draft deleted successfully"})
+    except Exception as e:
+        return jsonify({"error": "Failed to delete draft"}), 500
 
 # Run the server
 if __name__ == '__main__':
