@@ -1,1 +1,22 @@
-[]
+[
+  {
+    "from": "danusri@gmail.com",
+    "to": "danu@gmail.com",
+    "subject": "delete test",
+    "body": "gAAAAABoZ1OUqvQWL8jlCf7SCiONml4Y97JN12pnSUY3d134pUXbIMSnmuV7t5YZ-f5O1anUP5gWnEpGeSmyqdLGIAypUx6aBw==",
+    "date_of_compose": "2025-07-04T09:37:48.096665",
+    "date_of_send": "2025-07-04T09:37:48.096665",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "danu@gmail.com",
+    "subject": "delete method",
+    "body": "gAAAAABoZ1V49rkvg16IS1xsz-seObkJ9YTs37G7ZS_U55ls8emg7r-VbCGqJ2er59lrUd-quhHtStinyFZo2Q5pUab4wsBLijlLM5MnLA8h1WDQg9H8lUw=",
+    "date_of_compose": "2025-07-04T09:45:52.284182",
+    "date_of_send": "2025-07-04T09:45:52.284182",
+    "message_status": "unread",
+    "attachment": ""
+  }
+]

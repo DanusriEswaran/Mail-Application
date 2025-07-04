@@ -384,11 +384,8 @@ const Dashboard = () => {
       const res = await fetch(`${API_BASE_URL}/trash/${email}`);
       const data = await res.json();
       if (data.trash) {
-        console.log("data getting ? : ", res);
-        const filteredTrash = data.trash.filter(
-          (mail) => mail.message_status !== "deleted"
-        );
-        setTrash(filteredTrash);
+        console.log("data getting ? : ", data.trash);
+        setTrash(data.trash);
       }
     } catch (error) {
       console.error("Failed to fetch trash emails:", error);

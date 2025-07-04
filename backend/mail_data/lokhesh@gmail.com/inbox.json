@@ -6,8 +6,9 @@
     "body": "gAAAAABoYjKo1B0sgeZBFY1mmh-dJmq9C4m8gV_7wrfDjLybhcXXfrG2Pgp_hResoMZjuri5bw00Ri7lKyNMidv5Php9l7i800btdmJXu6yUipKfi5RoWZg=",
     "date_of_compose": "2025-06-30T12:16:00.410921",
     "date_of_send": "2025-06-30T12:16:00.410921",
-    "message_status": "unread",
-    "attachment": ""
+    "message_status": "deleted",
+    "attachment": "",
+    "deleted_at": "2025-07-04T10:30:09.452184"
   },
   {
     "from": "danusri@gmail.com",
@@ -18,5 +19,106 @@
     "date_of_send": "2025-06-30T12:55:56.990068",
     "message_status": "unread",
     "attachment": "/attachments/60475bcb-77de-43c0-9596-cec63b0699e5_MailIcon (1).png"
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "delete",
+    "body": "gAAAAABoZ1WYVewFB7Ka5fXliJYoIjmLXcrcHiC6pP67rszvcHOeTRsF8dy5-l4Lah04B0O49GdBlAYnv278AVKZYkDrAP33mw==",
+    "date_of_compose": "2025-07-04T09:46:24.538592",
+    "date_of_send": "2025-07-04T09:46:24.538592",
+    "message_status": "deleted",
+    "attachment": "",
+    "deleted_at": "2025-07-04T10:30:16.314173"
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "delete test",
+    "body": "gAAAAABoZ1oC6jI3bfDh7QrdsBHJ-u6t38cBGwHJDx-Z-YhW7oalp1f68XPvT_uYl0-znLOM-iwSmXy7b116no3fMx9fRO61Jg==",
+    "date_of_compose": "2025-07-04T10:05:14.903641",
+    "date_of_send": "2025-07-04T10:05:14.903641",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "delete",
+    "body": "gAAAAABoZ1pXmf_A4rkCWko9KnCeJmLh3r2DexucemRIV0YSr7OdflRyWAN_dq6oSKPveNJXFUj1_pDh6LVn6NUpt3ap1jsSxA==",
+    "date_of_compose": "2025-07-04T10:06:39.198124",
+    "date_of_send": "2025-07-04T10:06:39.198124",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "delete",
+    "body": "gAAAAABoZ1pwT_jaYAWl0UAXvxmBiovkUNvdohIs-Jbo_XwAUxad3IEhvzqZAeHnGJIkXwzbJ6UfUoKCNX9LF86sqxWa0I6ufg==",
+    "date_of_compose": "2025-07-04T10:07:04.848271",
+    "date_of_send": "2025-07-04T10:07:04.848271",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "del",
+    "body": "gAAAAABoZ1r14rbCM9geAW7FFM2ktxwVqrE92zh50GTvzJM0HOExDmkXWrMZc2oT50TNA3YV1qxqcxxnV2ZVNysNC7dKENMZMg==",
+    "date_of_compose": "2025-07-04T10:09:17.509197",
+    "date_of_send": "2025-07-04T10:09:17.509197",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "test mail",
+    "body": "gAAAAABoZ1vl8n8hmstCpXf44zw587VdT6mNGmdmVSzCGxzRukCXgM7Tuvqg1qG-u0GIKe_8d2aismKRdMZ-pSYXfa1FeCAP2tdyn5U_Nil99hy5gEpt23U=",
+    "date_of_compose": "2025-07-04T10:13:17.410891",
+    "date_of_send": "2025-07-04T10:13:17.410891",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "test",
+    "body": "gAAAAABoZ1wJVXPSLMhcJ4Q6rezzVKgpjIFaKxM9JfD_qrnrwvkbDRhRiTohnd5_GvUJh7Ka7yaHqdNRDOPK6Xj3-W7tlQO880X63h6cZkdQub97j60RRJw=",
+    "date_of_compose": "2025-07-04T10:13:53.384659",
+    "date_of_send": "2025-07-04T10:13:53.384659",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "delete mail",
+    "body": "gAAAAABoZ1xumR8zPn3C_R0-tT2DeIUTn_bxSf9U0WjEtcXK9El6pM_VvcXJvVnwUAqZUVXIYT6ANBmkb1yHnDuNGKtJ03uPUA==",
+    "date_of_compose": "2025-07-04T10:15:34.506360",
+    "date_of_send": "2025-07-04T10:15:34.506360",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "fghb",
+    "body": "gAAAAABoZ1yXv62HroUzNeTOLCQjY5_a36ta5Xz-n1nxK3NM9NvMTrAjsY2RPDl-9AtmknXJ9gcRElTkoej2_w2fBWnX1UEFNg==",
+    "date_of_compose": "2025-07-04T10:16:15.909990",
+    "date_of_send": "2025-07-04T10:16:15.909990",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "testing",
+    "body": "gAAAAABoZ1zdWcLDKQIb12pgd9V1SLXDqsgRHpxuXd6_6YVe7mPpEY2YKDtIBXdIIsrDgrmbTKWQsXi-AaXw3EFKl_09bO_kiw==",
+    "date_of_compose": "2025-07-04T10:17:25.895412",
+    "date_of_send": "2025-07-04T10:17:25.895412",
+    "message_status": "unread",
+    "attachment": ""
   }
 ]

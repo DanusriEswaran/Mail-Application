@@ -3,7 +3,7 @@ import uuid, os, json, hashlib
 from cryptography.fernet import Fernet
 from pathlib import Path
 from flask_cors import CORS
-from datetime import datetime,  timedelta
+from datetime import datetime
 
 UPLOAD_FOLDER = os.path.join("mail_data", "attachments")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -408,6 +408,7 @@ def delete_mail():
             ):
                 print("hello")
                 mail['message_status'] = 'deleted'
+                mail['deleted_at'] = datetime.now().isoformat()
                 mail_found = True
                 break
 
@@ -432,41 +433,35 @@ def view_trash(email):
     users = load_users()
     if email not in users:
         return jsonify({"error": "User not found"}), 404
-    user_data = users[email]
+    # Load inbox and sent JSON files
+    inbox_path = f"mail_data/{email}/inbox.json"
+    sent_path = f"mail_data/{email}/sent.json"
+    if not os.path.exists(inbox_path):
+        inbox_data = []
+    else:
+        with open(inbox_path, "r") as f:
+            inbox_data = json.load(f)
+    if not os.path.exists(sent_path):
+        sent_data = []
+    else:
+        with open(sent_path, "r") as f:
+            sent_data = json.load(f)
+
+    now = datetime.now()
     deleted_emails = []
-    now = datetime.utcnow()
 
+    # Filter deleted inbox mails
     updated_inbox = []
-    for mail in user_data.get('inbox', []):
-        if mail.get('message_status') == 'deleted':
-            deleted_time = datetime.strptime(mail.get('deleted_at', mail.get('date_of_send')), "%Y-%m-%d %H:%M:%S")
-            if now - deleted_time > timedelta(hours=TRASH_EXPIRY_HOURS):
-                continue  # Skip adding (permanently delete)
-            mail['original_folder'] = 'inbox'
+    for mail in inbox_data:
+        if mail['message_status'] == 'deleted':
             deleted_emails.append(mail)
-        else:
-            updated_inbox.append(mail)
-
-    # Process sent
-    updated_sent = []
-    for mail in user_data.get('sent', []):
-        if mail.get('message_status') == 'deleted':
-            deleted_time = datetime.strptime(mail.get('deleted_at', mail.get('date_of_send')), "%Y-%m-%d %H:%M:%S")
-            if now - deleted_time > timedelta(hours=TRASH_EXPIRY_HOURS):
-                continue
-            mail['original_folder'] = 'sent'
-            deleted_emails.append(mail)
-        else:
-            updated_sent.append(mail)
-
-    # Update user data
-    users[email]['inbox'] = updated_inbox
-    users[email]['sent'] = updated_sent
-    save_users(users)
+    for mail in sent_data:
+        print("mail in sent_data: ",mail)
+        if mail['message_status'] == 'deleted':
+           deleted_emails.append(mail)
 
     return jsonify({"trash": deleted_emails}), 200
-  
-    
+
 
 @app.route('/logout', methods=['POST'])
 def logout():
