@@ -1,14 +1,20 @@
 {
-    "newacc@gmail.com": {
-        "username": "new acc",
-        "password": "gAAAAABoYWsMbXw1OiLs1qWaS_cwCElTKq75OQkD6XR4yBIxRxBqp3mj3nI3FK2fQDgCoB3xoqF2569UQ7E7fwWHz6tFbjjUpw=="
-    },
-    "danusri@gmail.com": {
-        "username": "Danusri",
-        "password": "gAAAAABoYXGuiA8vzo83UXopn06LB_lsVAhbGpOLbg6PClNuEksYRzFxrdyf_wXLHZrsySVXuBH3Jk3NFN8ZED_rsjw6jLy9Ig=="
-    },
-    "preethika@gmail.com": {
-        "username": "preethika",
-        "password": "gAAAAABoYh_VeNrtIctBn-GEpfJTKTn7oe2cAOaryX4532zW-CGePtUek40bLwT5Nm9vGnAUMwr6T61HXO7PTmUfbJcwDreSTw=="
-    }
+  "newacc@gmail.com": {
+    "username": "new acc",
+    "password": "gAAAAABoYWsMbXw1OiLs1qWaS_cwCElTKq75OQkD6XR4yBIxRxBqp3mj3nI3FK2fQDgCoB3xoqF2569UQ7E7fwWHz6tFbjjUpw=="
+  },
+  "danusri@gmail.com": {
+    "username": "Danusri",
+    "password": "gAAAAABoYXGuiA8vzo83UXopn06LB_lsVAhbGpOLbg6PClNuEksYRzFxrdyf_wXLHZrsySVXuBH3Jk3NFN8ZED_rsjw6jLy9Ig==",
+    "inbox": [],
+    "sent": []
+  },
+  "lokhesh@gmail.com": {
+    "username": "Lokhesh",
+    "password": "gAAAAABoYjJxkongNw8NLNwCQzoeaWjtG9uzk18WDqT-FkA0I6s1PL3xaJt65Luwo40bR6X8fbXaMPrh8jhXwp4zMHZKAzeRkw=="
+  },
+  "danu@gmail.com": {
+    "username": "danu",
+    "password": "gAAAAABoYjbDq2v7mzOmz1HVGP47Vd3cSickC0__nNxaWgfE8pUhWoVFW3QCiwEt24yWKJvyFw_TJNbYzuLyhEBsw6lidXH6dQ=="
+  }
 }

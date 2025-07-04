@@ -358,15 +358,19 @@
   margin-left: auto;
 }
 
-.delete-icon {
-  margin-left: 12px;
-  color: #e53935;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.delete-icon:hover {
-  transform: scale(1.2);
+.successBanner {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #4caf50;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  transition: opacity 0.3s ease-in-out;
 }
 
 .sender-avatar {
@@ -458,6 +462,35 @@
   color: #202124;
   white-space: pre-wrap;
   margin-bottom: 16px;
+}
+
+.email-date-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.delete-icon {
+  display: none;
+  cursor: pointer;
+  color: #e74c3c;
+  font-size: 16px;
+  transition: opacity 0.2s ease;
+}
+
+.email-item:hover .delete-icon {
+  display: inline;
+}
+
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 10px;
+  border-radius: 6px;
+  margin: 10px 0;
+  text-align: center;
+  font-weight: bold;
 }
 
 .email-attachment {

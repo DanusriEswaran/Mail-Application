@@ -3,12 +3,13 @@ import uuid, os, json, hashlib
 from cryptography.fernet import Fernet
 from pathlib import Path
 from flask_cors import CORS
-from datetime import datetime
+from datetime import datetime,  timedelta
 
 UPLOAD_FOLDER = os.path.join("mail_data", "attachments")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Constants
+TRASH_EXPIRY_HOURS = 24
 KEY_FILE = "secret.key"
 MAIL_ROOT = 'mail_data'
 MAX_STORAGE = 8 * 1024 * 1024  # 8 MB
@@ -238,8 +239,6 @@ def upload_file():
 
     return jsonify({"message": "File uploaded", "url": f"/attachments/{filename}"})
 
-
-
 @app.route('/send', methods=['POST'])
 def send_mail():
     data = request.json
@@ -378,6 +377,96 @@ def storage(email):
 
     return jsonify(show_storage_status(email))
 
+@app.route('/delete_mail', methods=['POST'])
+def delete_mail():
+    data = request.json
+    token = data.get('token')
+    email = get_email_from_token(token)
+    active = data.get('activeTab')
+    if not email:
+        return jsonify({"error": "Invalid session"}), 401
+    target_fields = data.get('mail')
+    if not target_fields:
+        return jsonify({"error": "Missing mail data"}), 400
+    file_path = f'mail_data/{email}/{active}.json'
+
+    try:
+        if not os.path.exists(file_path):
+            return jsonify({"error": "Mailbox not found"}), 404
+
+        with open(file_path, 'r') as f:
+            mails = json.load(f)
+
+        mail_found = False
+
+        for mail in mails:
+            if (
+                mail.get('from') == target_fields.get('from') and
+                mail.get('to') == target_fields.get('to') and
+                mail.get('subject') == target_fields.get('subject') and
+                mail.get('date_of_send') == target_fields.get('date_of_send')
+            ):
+                print("hello")
+                mail['message_status'] = 'deleted'
+                mail_found = True
+                break
+
+        if not mail_found:
+            return jsonify({"error": "Mail not found"}), 404
+
+        with open(file_path, 'w') as f:
+            json.dump(mails, f, indent=2)
+
+        return jsonify({
+    "message_status": mail['message_status'],
+    "message": "Deleted successfully"
+}), 200
+
+
+    except Exception as e:
+        print("Error:", e)
+        return jsonify({"error": "An error occurred"}), 500
+
+@app.route('/trash/<email>', methods=['GET'])
+def view_trash(email):
+    users = load_users()
+    if email not in users:
+        return jsonify({"error": "User not found"}), 404
+    user_data = users[email]
+    deleted_emails = []
+    now = datetime.utcnow()
+
+    updated_inbox = []
+    for mail in user_data.get('inbox', []):
+        if mail.get('message_status') == 'deleted':
+            deleted_time = datetime.strptime(mail.get('deleted_at', mail.get('date_of_send')), "%Y-%m-%d %H:%M:%S")
+            if now - deleted_time > timedelta(hours=TRASH_EXPIRY_HOURS):
+                continue  # Skip adding (permanently delete)
+            mail['original_folder'] = 'inbox'
+            deleted_emails.append(mail)
+        else:
+            updated_inbox.append(mail)
+
+    # Process sent
+    updated_sent = []
+    for mail in user_data.get('sent', []):
+        if mail.get('message_status') == 'deleted':
+            deleted_time = datetime.strptime(mail.get('deleted_at', mail.get('date_of_send')), "%Y-%m-%d %H:%M:%S")
+            if now - deleted_time > timedelta(hours=TRASH_EXPIRY_HOURS):
+                continue
+            mail['original_folder'] = 'sent'
+            deleted_emails.append(mail)
+        else:
+            updated_sent.append(mail)
+
+    # Update user data
+    users[email]['inbox'] = updated_inbox
+    users[email]['sent'] = updated_sent
+    save_users(users)
+
+    return jsonify({"trash": deleted_emails}), 200
+  
+    
 
 @app.route('/logout', methods=['POST'])
 def logout():

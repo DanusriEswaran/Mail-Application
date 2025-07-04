@@ -52,7 +52,10 @@ const Dashboard = () => {
       const data = await res.json();
       console.log("Inbox data: ", data);
       if (data.inbox) {
-        setInbox(data.inbox);
+        const filteredInbox = data.inbox.filter(
+          (mail) => mail.message_status !== "deleted"
+        );
+        setInbox(filteredInbox);
       }
     } catch (err) {
       console.error("Error fetching inbox:", err);
@@ -64,7 +67,10 @@ const Dashboard = () => {
       const res = await fetch(`${API_BASE_URL}/sent/${email}`);
       const data = await res.json();
       if (data.sent) {
-        setSent(data.sent);
+        const filteredSent = data.sent.filter(
+          (mail) => mail.message_status !== "deleted"
+        );
+        setSent(filteredSent);
       }
     } catch (err) {
       console.error("Error fetching sent:", err);
@@ -175,102 +181,182 @@ const Dashboard = () => {
     return email.split("@")[0].charAt(0).toUpperCase();
   };
 
-  const renderEmailList = () => (
-    <div className="email-list">
-      {filteredEmails.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">📫</div>
-          <h3>
-            {activeTab === "sent" ? "No sent emails" : "Your inbox is empty"}
-          </h3>
-          <p>
-            {activeTab === "sent"
-              ? "No emails sent yet."
-              : "No emails found matching your search."}
-          </p>
-        </div>
-      ) : (
-        filteredEmails.map((mail, index) => (
-          <div
-            key={index}
-            className={`email-item ${
-              selectedEmail === index ? "selected" : ""
-            }`}
-            onClick={() =>
-              setSelectedEmail(selectedEmail === index ? null : index)
-            }
-          >
-            <div className="email-item-header">
-              <div className="sender-avatar">
-                {getInitials(activeTab === "sent" ? mail.to : mail.from)}
+  const handleMoveToTrash = async (mailToDelete, activeTab) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/delete_mail`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mail: mailToDelete, activeTab, token }),
+      });
+      const result = await res.json();
+      console.log("result: ", result);
+
+      if (result.message === "Deleted successfully") {
+        // Remove the deleted mail from state
+        const isSameMail = (mail1, mail2) =>
+          mail1.from === mail2.from &&
+          mail1.to === mail2.to &&
+          mail1.subject === mail2.subject &&
+          mail1.body === mail2.body &&
+          mail1.date_of_send === mail2.date_of_send;
+
+        if (activeTab === "inbox") {
+          setInbox((prevInbox) =>
+            prevInbox.filter((mail) => !isSameMail(mail, mailToDelete))
+          );
+        } else if (activeTab === "sent") {
+          setSent((prevSent) =>
+            prevSent.filter((mail) => !isSameMail(mail, mailToDelete))
+          );
+        }
+
+        // Optional: Show confirmation (Toast/snackbar)
+        console.log("Message deleted successfully");
+      } else {
+        console.error("Failed to delete email:", result);
+      }
+    } catch (err) {
+      console.error("Error moving to trash:", err);
+    }
+  };
+
+  const renderEmailList = () => {
+    let currentEmails = [];
+
+    // Choose which emails to render based on the active tab
+    if (activeTab === "inbox") {
+      currentEmails = inbox;
+    } else if (activeTab === "sent") {
+      currentEmails = sent;
+    } else if (activeTab === "trash") {
+      currentEmails = trash;
+    }
+
+    const filteredEmailsToRender = searchQuery
+      ? currentEmails.filter(
+          (mail) =>
+            mail.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            mail.body?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : currentEmails;
+
+    return (
+      <div className="email-list">
+        {filteredEmailsToRender.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">
+              {activeTab === "trash" ? "🗑️" : "📫"}
+            </div>
+            <h3>
+              {activeTab === "sent"
+                ? "No sent emails"
+                : activeTab === "trash"
+                ? "Trash is empty"
+                : "Your inbox is empty"}
+            </h3>
+            <p>
+              {activeTab === "sent"
+                ? "No emails sent yet."
+                : activeTab === "trash"
+                ? "No emails in Trash."
+                : "No emails found matching your search."}
+            </p>
+          </div>
+        ) : (
+          filteredEmailsToRender.map((mail, index) => (
+            <div
+              key={index}
+              className={`email-item ${
+                selectedEmail === index ? "selected" : ""
+              }`}
+              onClick={() =>
+                setSelectedEmail(selectedEmail === index ? null : index)
+              }
+            >
+              <div className="email-item-header">
+                <div className="sender-avatar">
+                  {getInitials(activeTab === "sent" ? mail.to : mail.from)}
+                </div>
+                <div className="email-meta">
+                  <div className="sender-name">
+                    {activeTab === "sent"
+                      ? `To: ${mail.to.split("@")[0]}`
+                      : mail.from.split("@")[0]}
+                  </div>
+                  <div className="email-subject">
+                    {mail.subject || "No Subject"}
+                  </div>
+                  <div className="email-preview">
+                    {mail.body.substring(0, 100)}...
+                  </div>
+                </div>
+                <div className="email-date-wrapper">
+                  <span className="email-date">
+                    {formatDate(mail.date_of_send)}
+                  </span>
+                  {activeTab !== "trash" && (
+                    <span
+                      className="delete-icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMoveToTrash(mail, activeTab);
+                      }}
+                    >
+                      🗑️
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="email-meta">
-                <div className="sender-name">
-                  {activeTab === "sent"
-                    ? `To: ${mail.to.split("@")[0]}`
-                    : mail.from.split("@")[0]}
+
+              {selectedEmail === index && (
+                <div className="email-detail">
+                  <div className="email-full-header">
+                    <h4>{mail.subject || "No Subject"}</h4>
+                    <div className="email-addresses">
+                      <div>
+                        <strong>From:</strong> {mail.from}
+                      </div>
+                      <div>
+                        <strong>To:</strong> {mail.to}
+                      </div>
+                      <div>
+                        <strong>Date:</strong>{" "}
+                        {mail.date_of_send
+                          ? new Date(mail.date_of_send).toLocaleString()
+                          : "N/A"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="email-body">{mail.body}</div>
+                  {mail.attachment && (
+                    <div className="email-attachment">
+                      <div className="attachment-item">
+                        <span className="attachment-icon">📎</span>
+                        <a
+                          href={`${API_BASE_URL}${mail.attachment}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download
+                          className="attachment-link"
+                        >
+                          {mail.attachment
+                            .split("/")
+                            .pop()
+                            .split("_")
+                            .slice(1)
+                            .join("_")}
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="email-subject">
-                  {mail.subject || "No Subject"}
-                </div>
-                <div className="email-preview">
-                  {mail.body.substring(0, 100)}...
-                </div>
-              </div>
-              <div className="email-date">{formatDate(mail.date_of_send)}</div>
-              {mail.attachment && (
-                <div className="attachment-indicator">📎</div>
               )}
             </div>
-
-            {selectedEmail === index && (
-              <div className="email-detail">
-                <div className="email-full-header">
-                  <h4>{mail.subject || "No Subject"}</h4>
-                  <div className="email-addresses">
-                    <div>
-                      <strong>From:</strong> {mail.from}
-                    </div>
-                    <div>
-                      <strong>To:</strong> {mail.to}
-                    </div>
-                    <div>
-                      <strong>Date:</strong>{" "}
-                      {mail.date_of_send
-                        ? new Date(mail.date_of_send).toLocaleString()
-                        : "N/A"}
-                    </div>
-                  </div>
-                </div>
-                <div className="email-body">{mail.body}</div>
-                {mail.attachment && (
-                  <div className="email-attachment">
-                    <div className="attachment-item">
-                      <span className="attachment-icon">📎</span>
-                      <a
-                        href={`${API_BASE_URL}${mail.attachment}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        download
-                        className="attachment-link"
-                      >
-                        {mail.attachment
-                          .split("/")
-                          .pop()
-                          .split("_")
-                          .slice(1)
-                          .join("_")}
-                      </a>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))
-      )}
-    </div>
-  );
+          ))
+        )}
+      </div>
+    );
+  };
 
   const renderStorageView = () => (
     <div className="storage-view">
@@ -292,6 +378,22 @@ const Dashboard = () => {
       </div>
     </div>
   );
+
+  const fetchTrash = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/trash/${email}`);
+      const data = await res.json();
+      if (data.trash) {
+        console.log("data getting ? : ", res);
+        const filteredTrash = data.trash.filter(
+          (mail) => mail.message_status !== "deleted"
+        );
+        setTrash(filteredTrash);
+      }
+    } catch (error) {
+      console.error("Failed to fetch trash emails:", error);
+    }
+  };
 
   return (
     <div className="gmail-dashboard">
@@ -373,6 +475,19 @@ const Dashboard = () => {
             >
               <span className="nav-icon">💾</span>
               <span className="nav-text">Storage</span>
+            </div>
+
+            <div
+              className={`nav-item ${activeTab === "trash" ? "active" : ""}`}
+              onClick={() => {
+                setActiveTab("trash");
+                setSelectedEmail(null);
+                fetchTrash(); // Make sure this function exists
+              }}
+            >
+              <span className="nav-icon">🗑️</span>
+              <span className="nav-text">Trash</span>
+              <span className="nav-count">{trash.length}</span>
             </div>
           </nav>
         </aside>
