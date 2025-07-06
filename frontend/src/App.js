@@ -3,6 +3,8 @@ import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import Register from "./components/register";
 import Login from "./components/login";
 import Dashboard from "./components/dashboard";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
 function App() {
@@ -15,6 +17,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </div>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar />
     </Router>
   );
 }

@@ -18,5 +18,35 @@
     "date_of_send": "2025-06-30T12:55:56.990068",
     "message_status": "unread",
     "attachment": "/attachments/60475bcb-77de-43c0-9596-cec63b0699e5_MailIcon (1).png"
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "test",
+    "body": "gAAAAABoan2p9SKwJuCOQTVfz6TMswnuYQ3Ks3CCsU7Dkcz8rnsZ3SJ8KJ8x0z83azQZ8zyThqYnuV_FAMMOORTvCGY-ch-kFg==",
+    "date_of_compose": "2025-07-06T19:14:09.817065",
+    "date_of_send": "2025-07-06T19:14:09.817065",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "FINAL",
+    "body": "gAAAAABoasRHKPabbH17djIIMtsvcczAag36Nsshww_JPMyXBJKeKCVXHFifOLtv7z_n_S_7pFU7Eish0wSPUHL30T6NO02OIQ1P8tvN7f_loYlVpv8Sw6Q=",
+    "date_of_compose": "2025-07-07T00:15:27.639045",
+    "date_of_send": "2025-07-07T00:15:27.639045",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "FINAL TESTING",
+    "body": "gAAAAABoasUOy6CLklft6MlzLq2PZncbdUCID8opnbxHeIO335T5RZ_SYUVHn5NZekp1kA-4tjCFLS6SPhPYPuZroIV0B_vyJA==",
+    "date_of_compose": "2025-07-07T00:18:46.678685",
+    "date_of_send": "2025-07-07T00:18:46.678685",
+    "message_status": "unread",
+    "attachment": ""
   }
 ]

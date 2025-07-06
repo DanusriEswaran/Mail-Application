@@ -6,7 +6,7 @@
     "body": "gAAAAABoYXptfjTdLl0s08Jx29IiMl_lMkzz63mKpDqvLGzevAhO08vY40L3cb6nobFDPS4T4m9_BDPq9zn29KrUVGTGSV712Q==",
     "date_of_compose": "2025-06-29T23:09:57.986317",
     "date_of_send": "2025-06-29T23:09:57.986317",
-    "message_status": "unread",
+    "message_status": "read",
     "attachment": ""
   },
   {
@@ -26,17 +26,37 @@
     "body": "gAAAAABoYjKo1B0sgeZBFY1mmh-dJmq9C4m8gV_7wrfDjLybhcXXfrG2Pgp_hResoMZjuri5bw00Ri7lKyNMidv5Php9l7i800btdmJXu6yUipKfi5RoWZg=",
     "date_of_compose": "2025-06-30T12:16:00.410921",
     "date_of_send": "2025-06-30T12:16:00.410921",
-    "message_status": "deleted",
+    "message_status": "unread",
     "attachment": ""
   },
   {
     "from": "danusri@gmail.com",
     "to": "lokhesh@gmail.com",
     "subject": "test",
-    "body": "gAAAAABoYjwE0lTeLpsjOVoPlmnTNKRdmTt9_LPg1_pec9pKBPHtHEj591l2N7algAxwGdc3HHYxFh0disrRLodKsZBMj8fZJw==",
-    "date_of_compose": "2025-06-30T12:55:56.990068",
-    "date_of_send": "2025-06-30T12:55:56.990068",
+    "body": "gAAAAABoan2p9SKwJuCOQTVfz6TMswnuYQ3Ks3CCsU7Dkcz8rnsZ3SJ8KJ8x0z83azQZ8zyThqYnuV_FAMMOORTvCGY-ch-kFg==",
+    "date_of_compose": "2025-07-06T19:14:09.817065",
+    "date_of_send": "2025-07-06T19:14:09.817065",
     "message_status": "deleted",
-    "attachment": "/attachments/60475bcb-77de-43c0-9596-cec63b0699e5_MailIcon (1).png"
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "FINAL",
+    "body": "gAAAAABoasRHKPabbH17djIIMtsvcczAag36Nsshww_JPMyXBJKeKCVXHFifOLtv7z_n_S_7pFU7Eish0wSPUHL30T6NO02OIQ1P8tvN7f_loYlVpv8Sw6Q=",
+    "date_of_compose": "2025-07-07T00:15:27.639045",
+    "date_of_send": "2025-07-07T00:15:27.639045",
+    "message_status": "unread",
+    "attachment": ""
+  },
+  {
+    "from": "danusri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "FINAL TESTING",
+    "body": "gAAAAABoasUOy6CLklft6MlzLq2PZncbdUCID8opnbxHeIO335T5RZ_SYUVHn5NZekp1kA-4tjCFLS6SPhPYPuZroIV0B_vyJA==",
+    "date_of_compose": "2025-07-07T00:18:46.678685",
+    "date_of_send": "2025-07-07T00:18:46.678685",
+    "message_status": "unread",
+    "attachment": ""
   }
 ]

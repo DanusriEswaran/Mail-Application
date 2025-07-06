@@ -1,6 +1,17 @@
 import React, { useEffect, useState } from "react";
 import "./Dashboard.css";
 import { API_BASE_URL } from "../config";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import { toast } from "react-toastify";
+
+const COLORS = ["#4285F4", "#34A853", "#FBBC05", "#EA4335", "#9C27B0"];
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("inbox");
@@ -18,6 +29,17 @@ const Dashboard = () => {
   const [selectedEmails, setSelectedEmails] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [scheduled, setScheduled] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [knownRecipients, setKnownRecipients] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [onConfirm, setOnConfirm] = useState(null);
 
   // Compose form states
   const [recipient, setRecipient] = useState("");
@@ -42,14 +64,19 @@ const Dashboard = () => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
     const now = new Date();
-    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dateOnly = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
     const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const diffTime = nowOnly - dateOnly;
     const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return date.toLocaleDateString("en-US", { weekday: "short" });
+    if (diffDays < 7)
+      return date.toLocaleDateString("en-US", { weekday: "short" });
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
@@ -74,11 +101,11 @@ const Dashboard = () => {
       if (data.url) {
         setAttachment(data.url);
       } else {
-        alert("Failed to upload file");
+        toast.error("Failed to upload file");
       }
     } catch (err) {
       console.error("File upload error:", err);
-      alert("Error uploading file");
+      toast.error("Error uploading file");
     }
   };
 
@@ -169,6 +196,43 @@ const Dashboard = () => {
     }
   };
 
+  const fetchScheduled = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/scheduled`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      const data = await res.json();
+
+      if (Array.isArray(data.scheduled)) {
+        const filteredScheduled = data.scheduled.filter(
+          (mail) => mail.message_status !== "deleted"
+        );
+        setScheduled(filteredScheduled);
+      } else {
+        console.error("Unexpected response:", data);
+        toast.error("Failed to load scheduled emails.");
+      }
+    } catch (err) {
+      console.error("Error fetching scheduled emails:", err);
+      toast.error("An error occurred while fetching scheduled emails.");
+    }
+  };
+
+  const fetchRecipients = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/recipients`);
+      const data = await res.json();
+      setKnownRecipients(data.recipients);
+    } catch (err) {
+      console.error("Error fetching recipients", err);
+    }
+  };
+
   // Search functionality
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -185,7 +249,7 @@ const Dashboard = () => {
         body: JSON.stringify({
           token,
           query: searchQuery,
-          folder: activeTab === "sent" ? "sent" : "inbox"
+          folder: activeTab === "sent" ? "sent" : "inbox",
         }),
       });
       const data = await res.json();
@@ -246,8 +310,12 @@ const Dashboard = () => {
     }
   };
 
-  const handlePermanentDelete = async (mail) => {
-    if (window.confirm("Are you sure you want to permanently delete this email?")) {
+  const handlePermanentDelete = (mail) => {
+    setConfirmMessage(
+      "Are you sure you want to permanently delete this email?"
+    );
+    setShowConfirmModal(true);
+    setOnConfirm(() => async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/permanent_delete`, {
           method: "POST",
@@ -259,8 +327,10 @@ const Dashboard = () => {
         }
       } catch (err) {
         console.error("Error permanently deleting:", err);
+      } finally {
+        setShowConfirmModal(false);
       }
-    }
+    });
   };
 
   const handleRestoreEmail = async (mail) => {
@@ -294,7 +364,7 @@ const Dashboard = () => {
         }),
       });
       if (res.ok) {
-        alert("Draft saved successfully!");
+        toast.success("Draft saved successfully!");
         setShowCompose(false);
         resetComposeForm();
         fetchDrafts();
@@ -342,7 +412,7 @@ const Dashboard = () => {
         }),
       });
       if (res.ok) {
-        alert("Template saved successfully!");
+        toast.success("Template saved successfully!");
         setShowTemplateModal(false);
         setTemplateName("");
         setTemplateSubject("");
@@ -400,22 +470,93 @@ const Dashboard = () => {
 
       const data = await res.json();
       if (data.message) {
-        alert("Email sent successfully!");
-        
+        toast.success("Email sent successfully!");
+
         // If editing draft, delete it after sending
         if (editingDraft) {
           await handleDeleteDraft(editingDraft);
         }
-        
+
         setShowCompose(false);
         resetComposeForm();
         fetchSent();
       } else {
-        alert(data.error || "Failed to send email.");
+        toast.error(data.error || "Failed to send email.");
       }
     } catch (err) {
       console.error("Send error:", err);
-      alert("An error occurred while sending the email.");
+      toast.error("An error occurred while sending the email.");
+    }
+  };
+
+  //Schedule mail
+  const handleScheduleEmail = async () => {
+    if (!scheduleDate || !scheduleTime) {
+      toast.error("Please select both date and time.");
+      return;
+    }
+
+    const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}`);
+    try {
+      const res = await fetch(`${API_BASE_URL}/schedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          to: recipient,
+          subject,
+          body,
+          attachment,
+          scheduleTime: scheduledDateTime.toISOString(),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.message) {
+        toast.success("Email scheduled successfully!");
+        setShowScheduleModal(false);
+        resetComposeForm();
+        setShowCompose(false);
+        fetchScheduled();
+      } else {
+        toast.error(data.error || "Failed to schedule email.");
+      }
+    } catch (err) {
+      console.error("Schedule error:", err);
+      toast.error("An error occurred while scheduling the email.");
+    }
+  };
+
+  const handleDeleteScheduled = async (mail) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/delete_mail`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          activeTab: "scheduled",
+          mail: {
+            from: mail.from,
+            to: mail.to,
+            subject: mail.subject,
+            date_of_send: mail.date_of_send,
+          },
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.message === "Deleted successfully") {
+        refreshCurrentFolder();
+        fetchScheduled();
+      } else {
+        toast.error(result.error || "Failed to delete scheduled email.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("An error occurred while deleting scheduled email.");
     }
   };
 
@@ -440,6 +581,9 @@ const Dashboard = () => {
       case "drafts":
         fetchDrafts();
         break;
+      case "scheduled":
+        fetchScheduled();
+        break;
       case "trash":
         fetchTrash();
         break;
@@ -461,19 +605,19 @@ const Dashboard = () => {
 
   // Get current emails based on active tab
   const getCurrentEmails = () => {
-    if (isSearching && searchResults.length > 0) {
-      return searchResults;
-    }
-    
     switch (activeTab) {
+      case "inbox":
+        return inbox;
       case "sent":
         return sent;
-      case "drafts":
-        return drafts;
       case "trash":
         return trash;
+      case "drafts":
+        return drafts;
+      case "scheduled":
+        return scheduled;
       default:
-        return inbox;
+        return [];
     }
   };
 
@@ -506,8 +650,12 @@ const Dashboard = () => {
           <div className="bulk-actions-toolbar">
             <span>{selectedEmails.length} selected</span>
             <button onClick={() => handleBulkAction("delete")}>Delete</button>
-            <button onClick={() => handleBulkAction("mark_read")}>Mark Read</button>
-            <button onClick={() => handleBulkAction("mark_unread")}>Mark Unread</button>
+            <button onClick={() => handleBulkAction("mark_read")}>
+              Mark Read
+            </button>
+            <button onClick={() => handleBulkAction("mark_unread")}>
+              Mark Unread
+            </button>
             <button onClick={() => setSelectedEmails([])}>Cancel</button>
           </div>
         )}
@@ -515,7 +663,13 @@ const Dashboard = () => {
         {currentEmails.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">
-              {activeTab === "trash" ? "🗑️" : activeTab === "drafts" ? "📝" : "📫"}
+              {activeTab === "trash"
+                ? "🗑️"
+                : activeTab === "drafts"
+                ? "📝"
+                : activeTab === "scheduled"
+                ? "📋"
+                : "📫"}
             </div>
             <h3>
               {activeTab === "sent"
@@ -524,6 +678,8 @@ const Dashboard = () => {
                 ? "Trash is empty"
                 : activeTab === "drafts"
                 ? "No drafts"
+                : activeTab === "scheduled"
+                ? "No scheduled emails"
                 : isSearching
                 ? "No search results"
                 : "Your inbox is empty"}
@@ -540,29 +696,53 @@ const Dashboard = () => {
               <div className="email-item-header">
                 <input
                   type="checkbox"
-                  checked={selectedEmails.includes(mail)}
+                  checked={selectedEmails.some(
+                    (m) =>
+                      m.subject === mail.subject &&
+                      m.to === mail.to &&
+                      m.from === mail.from &&
+                      (m.date_of_send === mail.date_of_send ||
+                        m.scheduled_date === mail.scheduled_date)
+                  )}
                   onChange={(e) => {
-                    if (e.target.checked) {
+                    const isChecked = e.target.checked;
+                    const match = (m) =>
+                      m.subject === mail.subject &&
+                      m.to === mail.to &&
+                      m.from === mail.from &&
+                      (m.date_of_send === mail.date_of_send ||
+                        m.scheduled_date === mail.scheduled_date);
+
+                    if (isChecked) {
                       setSelectedEmails([...selectedEmails, mail]);
                     } else {
-                      setSelectedEmails(selectedEmails.filter(m => m !== mail));
+                      setSelectedEmails(
+                        selectedEmails.filter((m) => !match(m))
+                      );
                     }
                   }}
                 />
                 <div className="sender-avatar">
-                  {getInitials(activeTab === "sent" ? mail.to : mail.from)}
+                  {getInitials(
+                    activeTab === "sent" || activeTab === "scheduled"
+                      ? mail.to
+                      : mail.from
+                  )}
                 </div>
-                <div 
+                <div
                   className="email-meta"
-                  onClick={() => setSelectedEmail(selectedEmail === index ? null : index)}
+                  onClick={() =>
+                    setSelectedEmail(selectedEmail === index ? null : index)
+                  }
                 >
                   <div className="sender-name">
-                    {activeTab === "sent"
-                      ? `To: ${mail.to.split("@")[0]}`
+                    {activeTab === "sent" || activeTab === "scheduled"
+                      ? `To: ${mail.to?.split("@")[0] || "Unknown"}`
                       : activeTab === "drafts"
                       ? `Draft to: ${mail.to || "..."}`
-                      : mail.from.split("@")[0]}
+                      : mail.from?.split("@")[0] || "Unknown"}
                   </div>
+
                   <div className="email-subject">
                     {mail.subject || "No Subject"}
                   </div>
@@ -572,27 +752,49 @@ const Dashboard = () => {
                 </div>
                 <div className="email-actions">
                   <span className="email-date">
-                    {formatDate(mail.date_of_send || mail.date_of_compose)}
+                    {formatDate(
+                      mail.scheduled_date ||
+                        mail.date_of_send ||
+                        mail.date_of_compose
+                    )}
                   </span>
-                  
+
                   {/* Action buttons based on tab */}
-                  {activeTab === "trash" ? (
+                  {activeTab === "scheduled" ? (
+                    <div className="scheduled-actions">
+                      <button onClick={() => handleDeleteScheduled(mail)}>
+                        🗑️
+                      </button>
+                    </div>
+                  ) : activeTab === "trash" ? (
                     <div className="trash-actions">
-                      <button onClick={() => handleRestoreEmail(mail)}>↺</button>
-                      <button onClick={() => handlePermanentDelete(mail)}>🗑️</button>
+                      <button onClick={() => handleRestoreEmail(mail)}>
+                        ↺
+                      </button>
+                      <button onClick={() => handlePermanentDelete(mail)}>
+                        🗑️
+                      </button>
                     </div>
                   ) : activeTab === "drafts" ? (
                     <div className="draft-actions">
                       <button onClick={() => handleEditDraft(mail)}>✏️</button>
-                      <button onClick={() => handleDeleteDraft(mail)}>🗑️</button>
+                      <button onClick={() => handleDeleteDraft(mail)}>
+                        🗑️
+                      </button>
                     </div>
                   ) : (
                     <div className="email-actions-dropdown">
-                      <button onClick={() => handleMoveToTrash(mail)}>🗑️</button>
+                      <button onClick={() => handleMoveToTrash(mail)}>
+                        🗑️
+                      </button>
                       {mail.message_status === "unread" ? (
-                        <button onClick={() => handleMarkAsRead(mail)}>👁️</button>
+                        <button onClick={() => handleMarkAsRead(mail)}>
+                          👁️
+                        </button>
                       ) : (
-                        <button onClick={() => handleMarkAsUnread(mail)}>👁️‍🗨️</button>
+                        <button onClick={() => handleMarkAsUnread(mail)}>
+                          👁️‍🗨️
+                        </button>
                       )}
                     </div>
                   )}
@@ -604,12 +806,26 @@ const Dashboard = () => {
                   <div className="email-full-header">
                     <h4>{mail.subject || "No Subject"}</h4>
                     <div className="email-addresses">
-                      <div><strong>From:</strong> {mail.from}</div>
-                      <div><strong>To:</strong> {mail.to}</div>
                       <div>
-                        <strong>Date:</strong>{" "}
-                        {mail.date_of_send || mail.date_of_compose
-                          ? new Date(mail.date_of_send || mail.date_of_compose).toLocaleString()
+                        <strong>From:</strong> {mail.from}
+                      </div>
+                      <div>
+                        <strong>To:</strong> {mail.to}
+                      </div>
+                      <div>
+                        <strong>
+                          {activeTab === "scheduled"
+                            ? "Scheduled for:"
+                            : "Date:"}
+                        </strong>{" "}
+                        {mail.scheduled_date ||
+                        mail.date_of_send ||
+                        mail.date_of_compose
+                          ? new Date(
+                              mail.scheduled_date ||
+                                mail.date_of_send ||
+                                mail.date_of_compose
+                            ).toLocaleString()
                           : "N/A"}
                       </div>
                     </div>
@@ -626,7 +842,12 @@ const Dashboard = () => {
                           download
                           className="attachment-link"
                         >
-                          {mail.attachment.split("/").pop().split("_").slice(1).join("_")}
+                          {mail.attachment
+                            .split("/")
+                            .pop()
+                            .split("_")
+                            .slice(1)
+                            .join("_")}
                         </a>
                       </div>
                     </div>
@@ -640,62 +861,81 @@ const Dashboard = () => {
     );
   };
 
-  const renderStorageView = () => (
-    <div className="storage-view">
-      <div className="storage-card">
-        <h2>Storage Usage</h2>
-        {storageInfo && (
-          <div className="storage-info">
-            <div className="storage-bar">
-              <div
-                className="storage-fill"
-                style={{ width: `${storageInfo.percentage}%` }}
-              ></div>
+  const renderStorageView = () => {
+    const chartData = [
+      { name: "Received", value: emailStats?.total_received || 0 },
+      { name: "Sent", value: emailStats?.total_sent || 0 },
+      { name: "Unread", value: emailStats?.unread_count || 0 },
+      { name: "Drafts", value: emailStats?.draft_count || 0 },
+      { name: "Deleted", value: emailStats?.deleted_count || 0 },
+    ];
+
+    return (
+      <div className="storage-view">
+        <div className="storage-card">
+          <h2>Storage Usage</h2>
+          {storageInfo && (
+            <div className="storage-info">
+              <div className="storage-bar">
+                <div
+                  className="storage-fill"
+                  style={{ width: `${storageInfo.percentage}%` }}
+                ></div>
+              </div>
+              <div className="storage-details">
+                <span className="storage-used">
+                  {storageInfo.used_mb} MB used
+                </span>
+                <span className="storage-status">{storageInfo.status}</span>
+              </div>
+              <div className="storage-percentage">
+                {storageInfo.percentage}%
+              </div>
             </div>
-            <div className="storage-details">
-              <span className="storage-used">{storageInfo.used_mb} MB used</span>
-              <span className="storage-status">{storageInfo.status}</span>
-            </div>
-            <div className="storage-percentage">{storageInfo.percentage}%</div>
+          )}
+        </div>
+
+        {emailStats && (
+          <div className="stats-card">
+            <h2>Email Statistics</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) =>
+                    `${name}: ${(percent * 100).toFixed(0)}%`
+                  }
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         )}
       </div>
-      
-      {emailStats && (
-        <div className="stats-card">
-          <h2>Email Statistics</h2>
-          <div className="stats-grid">
-            <div className="stat-item">
-              <div className="stat-number">{emailStats.total_received}</div>
-              <div className="stat-label">Received</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number">{emailStats.total_sent}</div>
-              <div className="stat-label">Sent</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number">{emailStats.unread_count}</div>
-              <div className="stat-label">Unread</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number">{emailStats.draft_count}</div>
-              <div className="stat-label">Drafts</div>
-            </div>
-            <div className="stat-item">
-              <div className="stat-number">{emailStats.deleted_count}</div>
-              <div className="stat-label">Deleted</div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   const renderTemplatesView = () => (
     <div className="templates-view">
       <div className="templates-header">
         <h2>Email Templates</h2>
-        <button onClick={() => setShowTemplateModal(true)}>Create Template</button>
+        <button onClick={() => setShowTemplateModal(true)}>
+          Create Template
+        </button>
       </div>
       <div className="templates-grid">
         {templates.map((template, index) => (
@@ -761,7 +1001,9 @@ const Dashboard = () => {
                 fetchInbox();
               }}
             >
-              <span className="nav-icon">📥</span>
+              <span className="nav-icon">
+                <i className="fas fa-inbox"></i>
+              </span>
               <span className="nav-text">Inbox</span>
               <span className="nav-count">{inbox.length}</span>
             </div>
@@ -775,7 +1017,9 @@ const Dashboard = () => {
                 fetchSent();
               }}
             >
-              <span className="nav-icon">📤</span>
+              <span className="nav-icon">
+                <i className="fas fa-paper-plane"></i>
+              </span>
               <span className="nav-text">Sent</span>
               <span className="nav-count">{sent.length}</span>
             </div>
@@ -789,13 +1033,17 @@ const Dashboard = () => {
                 fetchDrafts();
               }}
             >
-              <span className="nav-icon">📝</span>
+              <span className="nav-icon">
+                <i className="fas fa-file-alt"></i>
+              </span>
               <span className="nav-text">Drafts</span>
               <span className="nav-count">{drafts.length}</span>
             </div>
 
             <div
-              className={`nav-item ${activeTab === "templates" ? "active" : ""}`}
+              className={`nav-item ${
+                activeTab === "templates" ? "active" : ""
+              }`}
               onClick={() => {
                 setActiveTab("templates");
                 setSelectedEmail(null);
@@ -803,9 +1051,29 @@ const Dashboard = () => {
                 fetchTemplates();
               }}
             >
-              <span className="nav-icon">📋</span>
+              <span className="nav-icon">
+                <i className="fas fa-clone"></i>
+              </span>
               <span className="nav-text">Templates</span>
               <span className="nav-count">{templates.length}</span>
+            </div>
+
+            <div
+              className={`nav-item ${
+                activeTab === "scheduled" ? "active" : ""
+              }`}
+              onClick={() => {
+                setActiveTab("scheduled");
+                setSelectedEmail(null);
+                setSearchQuery("");
+                fetchScheduled();
+              }}
+            >
+              <span className="nav-icon">
+                <i className="fas fa-clock"></i>
+              </span>
+              <span className="nav-text">Scheduled</span>
+              <span className="nav-count">{scheduled.length}</span>
             </div>
 
             <div
@@ -817,7 +1085,9 @@ const Dashboard = () => {
                 fetchTrash();
               }}
             >
-              <span className="nav-icon">🗑️</span>
+              <span className="nav-icon">
+                <i className="fas fa-trash"></i>
+              </span>
               <span className="nav-text">Trash</span>
               <span className="nav-count">{trash.length}</span>
             </div>
@@ -832,7 +1102,9 @@ const Dashboard = () => {
                 fetchEmailStats();
               }}
             >
-              <span className="nav-icon">💾</span>
+              <span className="nav-icon">
+                <i className="fas fa-database"></i>
+              </span>
               <span className="nav-text">Storage</span>
             </div>
           </nav>
@@ -840,7 +1112,7 @@ const Dashboard = () => {
 
         {/* Main Content */}
         <main className="gmail-main">
-          {activeTab === "storage" 
+          {activeTab === "storage"
             ? renderStorageView()
             : activeTab === "templates"
             ? renderTemplatesView()
@@ -872,10 +1144,42 @@ const Dashboard = () => {
                   type="email"
                   placeholder="Recipients"
                   value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
+                  onFocus={() => {
+                    fetchRecipients();
+                    setShowSuggestions(true);
+                  }}
+                  onChange={(e) => {
+                    const input = e.target.value;
+                    setRecipient(input);
+
+                    const filtered = knownRecipients.filter((email) =>
+                      email.toLowerCase().includes(input.toLowerCase())
+                    );
+                    setSuggestions(filtered);
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setShowSuggestions(false), 150);
+                  }}
                   required
                 />
               </div>
+
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="suggestions-dropdown">
+                  {suggestions.map((email, idx) => (
+                    <li
+                      key={idx}
+                      onClick={() => {
+                        setRecipient(email);
+                        setSuggestions([]);
+                        setShowSuggestions(false);
+                      }}
+                    >
+                      {email}
+                    </li>
+                  ))}
+                </ul>
+              )}
 
               <div className="form-row">
                 <label>Subject</label>
@@ -917,7 +1221,11 @@ const Dashboard = () => {
                 {attachment && (
                   <div className="attachment-preview">
                     <span className="attachment-icon">📎</span>
-                    <a href={attachment} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={attachment}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       {attachment.split("/").pop()}
                     </a>
                   </div>
@@ -927,10 +1235,14 @@ const Dashboard = () => {
               {/* Template selection */}
               <div className="template-selection">
                 <label>Use Template:</label>
-                <select onChange={(e) => {
-                  const template = templates.find(t => t.name === e.target.value);
-                  if (template) handleUseTemplate(template);
-                }}>
+                <select
+                  onChange={(e) => {
+                    const template = templates.find(
+                      (t) => t.name === e.target.value
+                    );
+                    if (template) handleUseTemplate(template);
+                  }}
+                >
                   <option value="">Select a template...</option>
                   {templates.map((template, index) => (
                     <option key={index} value={template.name}>
@@ -941,21 +1253,69 @@ const Dashboard = () => {
               </div>
 
               <div className="compose-actions">
-                <button 
-                  className="send-btn" 
+                <button
+                  className="btn primary"
                   onClick={handleSend}
                   disabled={!recipient.trim()}
                 >
                   Send
                 </button>
-                <button 
-                  className="draft-btn" 
-                  onClick={handleSaveDraft}
+
+                <button
+                  className="btn secondary"
+                  onClick={() => setShowScheduleModal(true)}
                 >
+                  Schedule & Send
+                </button>
+
+                {showScheduleModal && (
+                  <div className="schedule-overlay">
+                    <div className="schedule-modal-card">
+                      <h4>📅 Schedule Email</h4>
+
+                      <div className="schedule-fields">
+                        <div className="date-picker">
+                          <label>Date</label>
+                          <input
+                            type="date"
+                            value={scheduleDate}
+                            onChange={(e) => setScheduleDate(e.target.value)}
+                          />
+                        </div>
+                        <div className="time-picker">
+                          <label>Time</label>
+                          <input
+                            type="time"
+                            value={scheduleTime}
+                            onChange={(e) => setScheduleTime(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="schedule-actions">
+                        <button
+                          onClick={handleScheduleEmail}
+                          className="btn primary"
+                        >
+                          Schedule
+                        </button>
+                        <button
+                          onClick={() => setShowScheduleModal(false)}
+                          className="btn muted"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <button className="btn outline" onClick={handleSaveDraft}>
                   Save Draft
                 </button>
-                <button 
-                  className="discard-btn"
+
+                <button
+                  className="btn muted"
                   onClick={() => {
                     setShowCompose(false);
                     resetComposeForm();
@@ -971,7 +1331,7 @@ const Dashboard = () => {
 
       {/* Template Modal */}
       {showTemplateModal && (
-        <div className="template-overlay">
+        <div className="modal-overlay">
           <div className="template-modal">
             <div className="template-header">
               <h3>Create New Template</h3>
@@ -1016,14 +1376,15 @@ const Dashboard = () => {
               </div>
 
               <div className="template-actions">
-                <button 
-                  className="save-template-btn" 
+                <button
+                  className="save-template-btn"
                   onClick={handleSaveTemplate}
                   disabled={!templateName.trim()}
                 >
                   Save Template
                 </button>
-                <button 
+                <br></br>
+                <button
                   className="cancel-btn"
                   onClick={() => {
                     setShowTemplateModal(false);
@@ -1035,6 +1396,69 @@ const Dashboard = () => {
                   Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Box */}
+      {showConfirmModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "10px",
+              padding: "24px",
+              width: "300px",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+              textAlign: "center",
+            }}
+          >
+            <p style={{ fontSize: "16px", marginBottom: "20px" }}>
+              {confirmMessage}
+            </p>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button
+                onClick={() => {
+                  if (onConfirm) onConfirm();
+                }}
+                style={{
+                  backgroundColor: "#1976d2",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "4px",
+                  padding: "8px 16px",
+                  cursor: "pointer",
+                }}
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                style={{
+                  backgroundColor: "#e0e0e0",
+                  color: "#333",
+                  border: "none",
+                  borderRadius: "4px",
+                  padding: "8px 16px",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
