@@ -6,22 +6,63 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("inbox");
   const [inbox, setInbox] = useState([]);
   const [sent, setSent] = useState([]);
+  const [drafts, setDrafts] = useState([]);
+  const [trash, setTrash] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
   const [storageInfo, setStorageInfo] = useState(null);
+  const [emailStats, setEmailStats] = useState(null);
   const [showCompose, setShowCompose] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [selectedEmail, setSelectedEmail] = useState(null);
+  const [selectedEmails, setSelectedEmails] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
+  // Compose form states
   const [recipient, setRecipient] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [attachment, setAttachment] = useState("");
+  const [file, setFile] = useState(null);
+  const [isDraft, setIsDraft] = useState(false);
+  const [editingDraft, setEditingDraft] = useState(null);
+
+  // Template states
+  const [templateName, setTemplateName] = useState("");
+  const [templateSubject, setTemplateSubject] = useState("");
+  const [templateBody, setTemplateBody] = useState("");
 
   const username = localStorage.getItem("username");
   const email = localStorage.getItem("email");
   const token = localStorage.getItem("token");
-  const [file, setFile] = useState(null);
-  const [trash, setTrash] = useState([]);
 
+  // Utility functions
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    const now = new Date();
+    const dateOnly = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
+    const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffTime = nowOnly - dateOnly;
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7)
+      return date.toLocaleDateString("en-US", { weekday: "short" });
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const getInitials = (email) => {
+    return email.split("@")[0].charAt(0).toUpperCase();
+  };
+
+  // File upload handler
   const handleFileUpload = async () => {
     if (!file) return;
 
@@ -46,11 +87,11 @@ const Dashboard = () => {
     }
   };
 
+  // Fetch functions
   const fetchInbox = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/inbox/${email}`);
       const data = await res.json();
-      console.log("Inbox data: ", data);
       if (data.inbox) {
         const filteredInbox = data.inbox.filter(
           (mail) => mail.message_status !== "deleted"
@@ -77,6 +118,42 @@ const Dashboard = () => {
     }
   };
 
+  const fetchDrafts = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/drafts/${email}`);
+      const data = await res.json();
+      if (data.drafts) {
+        setDrafts(data.drafts);
+      }
+    } catch (err) {
+      console.error("Error fetching drafts:", err);
+    }
+  };
+
+  const fetchTrash = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/trash/${email}`);
+      const data = await res.json();
+      if (data.trash) {
+        setTrash(data.trash);
+      }
+    } catch (error) {
+      console.error("Failed to fetch trash emails:", error);
+    }
+  };
+
+  const fetchTemplates = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/templates/${email}`);
+      const data = await res.json();
+      if (data.templates) {
+        setTemplates(data.templates);
+      }
+    } catch (err) {
+      console.error("Error fetching templates:", err);
+    }
+  };
+
   const fetchStorage = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/storage/${email}`);
@@ -87,18 +164,238 @@ const Dashboard = () => {
     }
   };
 
-  useEffect(() => {
-    fetchInbox();
-    fetchSent();
-  }, []);
+  const fetchEmailStats = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/stats/${email}`);
+      const data = await res.json();
+      setEmailStats(data);
+    } catch (err) {
+      console.error("Error fetching email stats:", err);
+    }
+  };
 
+  // Search functionality
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          query: searchQuery,
+          folder: activeTab === "sent" ? "sent" : "inbox",
+        }),
+      });
+      const data = await res.json();
+      if (data.results) {
+        setSearchResults(data.results);
+      }
+    } catch (err) {
+      console.error("Search error:", err);
+    }
+  };
+
+  // Email actions
+  const handleMarkAsRead = async (mail) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/mark_read`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, mail, activeTab }),
+      });
+      if (res.ok) {
+        refreshCurrentFolder();
+      }
+    } catch (err) {
+      console.error("Error marking as read:", err);
+    }
+  };
+
+  const handleMarkAsUnread = async (mail) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/mark_unread`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, mail, activeTab }),
+      });
+      if (res.ok) {
+        refreshCurrentFolder();
+      }
+    } catch (err) {
+      console.error("Error marking as unread:", err);
+    }
+  };
+
+  const handleMoveToTrash = async (mailToDelete) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/delete_mail`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mail: mailToDelete, activeTab, token }),
+      });
+      const result = await res.json();
+
+      if (result.message === "Deleted successfully") {
+        refreshCurrentFolder();
+        fetchTrash(); // Refresh trash count
+      }
+    } catch (err) {
+      console.error("Error moving to trash:", err);
+    }
+  };
+
+  const handlePermanentDelete = async (mail) => {
+    if (
+      window.confirm("Are you sure you want to permanently delete this email?")
+    ) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/permanent_delete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, mail }),
+        });
+        if (res.ok) {
+          fetchTrash();
+        }
+      } catch (err) {
+        console.error("Error permanently deleting:", err);
+      }
+    }
+  };
+
+  const handleRestoreEmail = async (mail) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/restore_email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, mail }),
+      });
+      if (res.ok) {
+        fetchTrash();
+        refreshCurrentFolder();
+      }
+    } catch (err) {
+      console.error("Error restoring email:", err);
+    }
+  };
+
+  // Draft functions
+  const handleSaveDraft = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/save_draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          to: recipient,
+          subject,
+          body,
+          attachment,
+        }),
+      });
+      if (res.ok) {
+        alert("Draft saved successfully!");
+        setShowCompose(false);
+        resetComposeForm();
+        fetchDrafts();
+      }
+    } catch (err) {
+      console.error("Error saving draft:", err);
+    }
+  };
+
+  const handleDeleteDraft = async (draft) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/delete_draft`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, draft }),
+      });
+      if (res.ok) {
+        fetchDrafts();
+      }
+    } catch (err) {
+      console.error("Error deleting draft:", err);
+    }
+  };
+
+  const handleEditDraft = (draft) => {
+    setEditingDraft(draft);
+    setRecipient(draft.to);
+    setSubject(draft.subject);
+    setBody(draft.body);
+    setAttachment(draft.attachment || "");
+    setShowCompose(true);
+  };
+
+  // Template functions
+  const handleSaveTemplate = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/save_template`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          name: templateName,
+          subject: templateSubject,
+          body: templateBody,
+        }),
+      });
+      if (res.ok) {
+        alert("Template saved successfully!");
+        setShowTemplateModal(false);
+        setTemplateName("");
+        setTemplateSubject("");
+        setTemplateBody("");
+        fetchTemplates();
+      }
+    } catch (err) {
+      console.error("Error saving template:", err);
+    }
+  };
+
+  const handleUseTemplate = (template) => {
+    setSubject(template.subject);
+    setBody(template.body);
+  };
+
+  // Bulk operations
+  const handleBulkAction = async (action) => {
+    if (selectedEmails.length === 0) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/bulk_action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          action,
+          emails: selectedEmails,
+          folder: activeTab,
+        }),
+      });
+      if (res.ok) {
+        setSelectedEmails([]);
+        refreshCurrentFolder();
+      }
+    } catch (err) {
+      console.error("Bulk action error:", err);
+    }
+  };
+
+  // Send email
   const handleSend = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/send`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
           to: recipient,
@@ -111,20 +408,50 @@ const Dashboard = () => {
       const data = await res.json();
       if (data.message) {
         alert("Email sent successfully!");
+
+        // If editing draft, delete it after sending
+        if (editingDraft) {
+          await handleDeleteDraft(editingDraft);
+        }
+
         setShowCompose(false);
-        setRecipient("");
-        setSubject("");
-        setBody("");
-        setAttachment("");
-        setFile(null);
-        fetchInbox();
-        fetchSent(); // Refresh sent folder after sending
+        resetComposeForm();
+        fetchSent();
       } else {
         alert(data.error || "Failed to send email.");
       }
     } catch (err) {
       console.error("Send error:", err);
       alert("An error occurred while sending the email.");
+    }
+  };
+
+  // Utility functions
+  const resetComposeForm = () => {
+    setRecipient("");
+    setSubject("");
+    setBody("");
+    setAttachment("");
+    setFile(null);
+    setEditingDraft(null);
+  };
+
+  const refreshCurrentFolder = () => {
+    switch (activeTab) {
+      case "inbox":
+        fetchInbox();
+        break;
+      case "sent":
+        fetchSent();
+        break;
+      case "drafts":
+        fetchDrafts();
+        break;
+      case "trash":
+        fetchTrash();
+        break;
+      default:
+        break;
     }
   };
 
@@ -139,148 +466,120 @@ const Dashboard = () => {
     });
   };
 
+  // Get current emails based on active tab
   const getCurrentEmails = () => {
-    if (activeTab === "sent") return sent;
-    if (activeTab === "trash") return trash;
-    return inbox;
-  };
+    if (isSearching && searchResults.length > 0) {
+      return searchResults;
+    }
 
-  const filteredEmails = getCurrentEmails().filter(
-    (email) =>
-      email.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.to.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.body.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-
-    const date = new Date(dateString);
-    const now = new Date();
-
-    const dateOnly = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate()
-    );
-    const nowOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const diffTime = nowOnly - dateOnly;
-    const diffDays = diffTime / (1000 * 60 * 60 * 24);
-
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7)
-      return date.toLocaleDateString("en-US", { weekday: "short" });
-
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
-  const getInitials = (email) => {
-    return email.split("@")[0].charAt(0).toUpperCase();
-  };
-
-  const handleMoveToTrash = async (mailToDelete, activeTab) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/delete_mail`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mail: mailToDelete, activeTab, token }),
-      });
-      const result = await res.json();
-      console.log("result: ", result);
-
-      if (result.message === "Deleted successfully") {
-        // Remove the deleted mail from state
-        const isSameMail = (mail1, mail2) =>
-          mail1.from === mail2.from &&
-          mail1.to === mail2.to &&
-          mail1.subject === mail2.subject &&
-          mail1.body === mail2.body &&
-          mail1.date_of_send === mail2.date_of_send;
-
-        if (activeTab === "inbox") {
-          setInbox((prevInbox) =>
-            prevInbox.filter((mail) => !isSameMail(mail, mailToDelete))
-          );
-        } else if (activeTab === "sent") {
-          setSent((prevSent) =>
-            prevSent.filter((mail) => !isSameMail(mail, mailToDelete))
-          );
-        }
-
-        // Optional: Show confirmation (Toast/snackbar)
-        console.log("Message deleted successfully");
-      } else {
-        console.error("Failed to delete email:", result);
-      }
-    } catch (err) {
-      console.error("Error moving to trash:", err);
+    switch (activeTab) {
+      case "sent":
+        return sent;
+      case "drafts":
+        return drafts;
+      case "trash":
+        return trash;
+      default:
+        return inbox;
     }
   };
 
+  // Initial data fetch
+  useEffect(() => {
+    fetchInbox();
+    fetchSent();
+    fetchDrafts();
+    fetchEmailStats();
+  }, []);
+
+  // Search effect
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      handleSearch();
+    } else {
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  }, [searchQuery]);
+
+  // Render functions
   const renderEmailList = () => {
-    let currentEmails = [];
-
-    // Choose which emails to render based on the active tab
-    if (activeTab === "inbox") {
-      currentEmails = inbox;
-    } else if (activeTab === "sent") {
-      currentEmails = sent;
-    } else if (activeTab === "trash") {
-      currentEmails = trash;
-    }
-
-    const filteredEmailsToRender = searchQuery
-      ? currentEmails.filter(
-          (mail) =>
-            mail.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            mail.body?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : currentEmails;
+    const currentEmails = getCurrentEmails();
 
     return (
       <div className="email-list">
-        {filteredEmailsToRender.length === 0 ? (
+        {/* Bulk actions toolbar */}
+        {selectedEmails.length > 0 && (
+          <div className="bulk-actions-toolbar">
+            <span>{selectedEmails.length} selected</span>
+            <button onClick={() => handleBulkAction("delete")}>Delete</button>
+            <button onClick={() => handleBulkAction("mark_read")}>
+              Mark Read
+            </button>
+            <button onClick={() => handleBulkAction("mark_unread")}>
+              Mark Unread
+            </button>
+            <button onClick={() => setSelectedEmails([])}>Cancel</button>
+          </div>
+        )}
+
+        {currentEmails.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">
-              {activeTab === "trash" ? "🗑️" : "📫"}
+              {activeTab === "trash"
+                ? "🗑️"
+                : activeTab === "drafts"
+                ? "📝"
+                : "📫"}
             </div>
             <h3>
               {activeTab === "sent"
                 ? "No sent emails"
                 : activeTab === "trash"
                 ? "Trash is empty"
+                : activeTab === "drafts"
+                ? "No drafts"
+                : isSearching
+                ? "No search results"
                 : "Your inbox is empty"}
             </h3>
-            <p>
-              {activeTab === "sent"
-                ? "No emails sent yet."
-                : activeTab === "trash"
-                ? "No emails in Trash."
-                : "No emails found matching your search."}
-            </p>
           </div>
         ) : (
-          filteredEmailsToRender.map((mail, index) => (
+          currentEmails.map((mail, index) => (
             <div
               key={index}
               className={`email-item ${
                 selectedEmail === index ? "selected" : ""
-              }`}
-              onClick={() =>
-                setSelectedEmail(selectedEmail === index ? null : index)
-              }
+              } ${mail.message_status === "unread" ? "unread" : ""}`}
             >
               <div className="email-item-header">
+                <input
+                  type="checkbox"
+                  checked={selectedEmails.includes(mail)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedEmails([...selectedEmails, mail]);
+                    } else {
+                      setSelectedEmails(
+                        selectedEmails.filter((m) => m !== mail)
+                      );
+                    }
+                  }}
+                />
                 <div className="sender-avatar">
                   {getInitials(activeTab === "sent" ? mail.to : mail.from)}
                 </div>
-                <div className="email-meta">
+                <div
+                  className="email-meta"
+                  onClick={() =>
+                    setSelectedEmail(selectedEmail === index ? null : index)
+                  }
+                >
                   <div className="sender-name">
                     {activeTab === "sent"
                       ? `To: ${mail.to.split("@")[0]}`
+                      : activeTab === "drafts"
+                      ? `Draft to: ${mail.to || "..."}`
                       : mail.from.split("@")[0]}
                   </div>
                   <div className="email-subject">
@@ -290,20 +589,43 @@ const Dashboard = () => {
                     {mail.body.substring(0, 100)}...
                   </div>
                 </div>
-                <div className="email-date-wrapper">
+                <div className="email-actions">
                   <span className="email-date">
-                    {formatDate(mail.date_of_send)}
+                    {formatDate(mail.date_of_send || mail.date_of_compose)}
                   </span>
-                  {activeTab !== "trash" && (
-                    <span
-                      className="delete-icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMoveToTrash(mail, activeTab);
-                      }}
-                    >
-                      🗑️
-                    </span>
+
+                  {/* Action buttons based on tab */}
+                  {activeTab === "trash" ? (
+                    <div className="trash-actions">
+                      <button onClick={() => handleRestoreEmail(mail)}>
+                        ↺
+                      </button>
+                      <button onClick={() => handlePermanentDelete(mail)}>
+                        🗑️
+                      </button>
+                    </div>
+                  ) : activeTab === "drafts" ? (
+                    <div className="draft-actions">
+                      <button onClick={() => handleEditDraft(mail)}>✏️</button>
+                      <button onClick={() => handleDeleteDraft(mail)}>
+                        🗑️
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="email-actions-dropdown">
+                      <button onClick={() => handleMoveToTrash(mail)}>
+                        🗑️
+                      </button>
+                      {mail.message_status === "unread" ? (
+                        <button onClick={() => handleMarkAsRead(mail)}>
+                          👁️
+                        </button>
+                      ) : (
+                        <button onClick={() => handleMarkAsUnread(mail)}>
+                          👁️‍🗨️
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -321,8 +643,10 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <strong>Date:</strong>{" "}
-                        {mail.date_of_send
-                          ? new Date(mail.date_of_send).toLocaleString()
+                        {mail.date_of_send || mail.date_of_compose
+                          ? new Date(
+                              mail.date_of_send || mail.date_of_compose
+                            ).toLocaleString()
                           : "N/A"}
                       </div>
                     </div>
@@ -362,19 +686,73 @@ const Dashboard = () => {
     <div className="storage-view">
       <div className="storage-card">
         <h2>Storage Usage</h2>
-        <div className="storage-info">
-          <div className="storage-bar">
-            <div
-              className="storage-fill"
-              style={{ width: `${storageInfo.percentage}%` }}
-            ></div>
+        {storageInfo && (
+          <div className="storage-info">
+            <div className="storage-bar">
+              <div
+                className="storage-fill"
+                style={{ width: `${storageInfo.percentage}%` }}
+              ></div>
+            </div>
+            <div className="storage-details">
+              <span className="storage-used">
+                {storageInfo.used_mb} MB used
+              </span>
+              <span className="storage-status">{storageInfo.status}</span>
+            </div>
+            <div className="storage-percentage">{storageInfo.percentage}%</div>
           </div>
-          <div className="storage-details">
-            <span className="storage-used">{storageInfo.used_mb} MB used</span>
-            <span className="storage-status">{storageInfo.status}</span>
+        )}
+      </div>
+
+      {emailStats && (
+        <div className="stats-card">
+          <h2>Email Statistics</h2>
+          <div className="stats-grid">
+            <div className="stat-item">
+              <div className="stat-number">{emailStats.total_received}</div>
+              <div className="stat-label">Received</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number">{emailStats.total_sent}</div>
+              <div className="stat-label">Sent</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number">{emailStats.unread_count}</div>
+              <div className="stat-label">Unread</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number">{emailStats.draft_count}</div>
+              <div className="stat-label">Drafts</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-number">{emailStats.deleted_count}</div>
+              <div className="stat-label">Deleted</div>
+            </div>
           </div>
-          <div className="storage-percentage">{storageInfo.percentage}%</div>
         </div>
+      )}
+    </div>
+  );
+
+  const renderTemplatesView = () => (
+    <div className="templates-view">
+      <div className="templates-header">
+        <h2>Email Templates</h2>
+        <button onClick={() => setShowTemplateModal(true)}>
+          Create Template
+        </button>
+      </div>
+      <div className="templates-grid">
+        {templates.map((template, index) => (
+          <div key={index} className="template-card">
+            <h3>{template.name}</h3>
+            <p>{template.subject}</p>
+            <div className="template-actions">
+              <button onClick={() => handleUseTemplate(template)}>Use</button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -408,9 +786,6 @@ const Dashboard = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <button className="search-btn">
-              <i className="fas fa-search"></i>
-            </button>
           </div>
         </div>
         <div className="header-right">
@@ -441,6 +816,7 @@ const Dashboard = () => {
               onClick={() => {
                 setActiveTab("inbox");
                 setSelectedEmail(null);
+                setSearchQuery("");
                 fetchInbox();
               }}
             >
@@ -454,6 +830,7 @@ const Dashboard = () => {
               onClick={() => {
                 setActiveTab("sent");
                 setSelectedEmail(null);
+                setSearchQuery("");
                 fetchSent();
               }}
             >
@@ -463,15 +840,33 @@ const Dashboard = () => {
             </div>
 
             <div
-              className={`nav-item ${activeTab === "storage" ? "active" : ""}`}
+              className={`nav-item ${activeTab === "drafts" ? "active" : ""}`}
               onClick={() => {
-                setActiveTab("storage");
+                setActiveTab("drafts");
                 setSelectedEmail(null);
-                fetchStorage();
+                setSearchQuery("");
+                fetchDrafts();
               }}
             >
-              <span className="nav-icon">💾</span>
-              <span className="nav-text">Storage</span>
+              <span className="nav-icon">📝</span>
+              <span className="nav-text">Drafts</span>
+              <span className="nav-count">{drafts.length}</span>
+            </div>
+
+            <div
+              className={`nav-item ${
+                activeTab === "templates" ? "active" : ""
+              }`}
+              onClick={() => {
+                setActiveTab("templates");
+                setSelectedEmail(null);
+                setSearchQuery("");
+                fetchTemplates();
+              }}
+            >
+              <span className="nav-icon">📋</span>
+              <span className="nav-text">Templates</span>
+              <span className="nav-count">{templates.length}</span>
             </div>
 
             <div
@@ -479,20 +874,37 @@ const Dashboard = () => {
               onClick={() => {
                 setActiveTab("trash");
                 setSelectedEmail(null);
-                fetchTrash(); // Make sure this function exists
+                setSearchQuery("");
+                fetchTrash();
               }}
             >
               <span className="nav-icon">🗑️</span>
               <span className="nav-text">Trash</span>
               <span className="nav-count">{trash.length}</span>
             </div>
+
+            <div
+              className={`nav-item ${activeTab === "storage" ? "active" : ""}`}
+              onClick={() => {
+                setActiveTab("storage");
+                setSelectedEmail(null);
+                setSearchQuery("");
+                fetchStorage();
+                fetchEmailStats();
+              }}
+            >
+              <span className="nav-icon">💾</span>
+              <span className="nav-text">Storage</span>
+            </div>
           </nav>
         </aside>
 
         {/* Main Content */}
         <main className="gmail-main">
-          {activeTab === "storage" && storageInfo
+          {activeTab === "storage"
             ? renderStorageView()
+            : activeTab === "templates"
+            ? renderTemplatesView()
             : renderEmailList()}
         </main>
       </div>
@@ -502,10 +914,13 @@ const Dashboard = () => {
         <div className="compose-overlay">
           <div className="compose-modal">
             <div className="compose-header">
-              <h3>New Message</h3>
+              <h3>{editingDraft ? "Edit Draft" : "New Message"}</h3>
               <button
                 className="close-btn"
-                onClick={() => setShowCompose(false)}
+                onClick={() => {
+                  setShowCompose(false);
+                  resetComposeForm();
+                }}
               >
                 ✕
               </button>
@@ -573,18 +988,119 @@ const Dashboard = () => {
                   </div>
                 )}
               </div>
+
+              {/* Template selection */}
+              <div className="template-selection">
+                <label>Use Template:</label>
+                <select
+                  onChange={(e) => {
+                    const template = templates.find(
+                      (t) => t.name === e.target.value
+                    );
+                    if (template) handleUseTemplate(template);
+                  }}
+                >
+                  <option value="">Select a template...</option>
+                  {templates.map((template, index) => (
+                    <option key={index} value={template.name}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="compose-actions">
+                <button
+                  className="send-btn"
+                  onClick={handleSend}
+                  disabled={!recipient.trim()}
+                >
+                  Send
+                </button>
+                <button className="draft-btn" onClick={handleSaveDraft}>
+                  Save Draft
+                </button>
+                <button
+                  className="discard-btn"
+                  onClick={() => {
+                    setShowCompose(false);
+                    resetComposeForm();
+                  }}
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template Modal */}
+      {showTemplateModal && (
+        <div className="template-overlay">
+          <div className="template-modal">
+            <div className="template-header">
+              <h3>Create New Template</h3>
+              <button
+                className="close-btn"
+                onClick={() => setShowTemplateModal(false)}
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="compose-footer">
-              <button className="send-btn" onClick={handleSend}>
-                Send
-              </button>
-              <button
-                className="cancel-btn"
-                onClick={() => setShowCompose(false)}
-              >
-                Cancel
-              </button>
+            <div className="template-form">
+              <div className="form-row">
+                <label>Template Name</label>
+                <input
+                  type="text"
+                  placeholder="Template name"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <label>Subject</label>
+                <input
+                  type="text"
+                  placeholder="Subject"
+                  value={templateSubject}
+                  onChange={(e) => setTemplateSubject(e.target.value)}
+                />
+              </div>
+
+              <div className="form-row">
+                <label>Template Body</label>
+                <textarea
+                  placeholder="Template content..."
+                  value={templateBody}
+                  onChange={(e) => setTemplateBody(e.target.value)}
+                  rows="8"
+                />
+              </div>
+
+              <div className="template-actions">
+                <button
+                  className="save-template-btn"
+                  onClick={handleSaveTemplate}
+                  disabled={!templateName.trim()}
+                >
+                  Save Template
+                </button>
+                <button
+                  className="cancel-btn"
+                  onClick={() => {
+                    setShowTemplateModal(false);
+                    setTemplateName("");
+                    setTemplateSubject("");
+                    setTemplateBody("");
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
