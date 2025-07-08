@@ -5,6 +5,7 @@ from pathlib import Path
 from flask_cors import CORS
 from datetime import datetime,  timedelta
 
+API_KEY='0898c79d9edee1eaf79e1f97718ea84da47472f70884944ba1641b58ed24796c'
 UPLOAD_FOLDER = os.path.join("mail_data", "attachments")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -1059,6 +1060,38 @@ def logout():
     token = request.json.get('token')
     delete_session(token)
     return jsonify({"message": "Logged out successfully"})
+
+@app.route('/validate_user', methods=['POST'])
+def validate_user():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "Invalid JSON or headers"}), 400
+
+        email = data.get('email')
+        password = data.get('password')
+        api_key = request.headers.get('MAIL-KEY')
+        if not all([email, password]):
+            return jsonify({"error": "Missing parameters"}), 400
+
+        if api_key != API_KEY:
+            return jsonify({"error": "Unauthorized request"}), 403
+
+        users = load_users()
+        if email not in users:
+            return jsonify({"valid": False, "message": "Invalid user"}), 404
+
+        encrypted_password = users[email]['password']
+        original_password = cipher.decrypt(encrypted_password.encode()).decode()
+
+        if original_password == password:
+            return jsonify({"valid": True, "message": "Valid user"}), 200
+        else:
+            return jsonify({"valid": False, "message": "Invalid password"}), 401
+
+    except Exception as e:
+        print("Exception:", e)
+        return jsonify({"error": "Something went wrong", "details": str(e)}), 500
 
 # Run the server
 if __name__ == '__main__':

@@ -356,7 +356,7 @@
   padding: 16px;
   margin-bottom: 12px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease, border-left-color 0.3s ease, background-color 0.3s ease;
   cursor: pointer;
 }
 
@@ -367,6 +367,12 @@
 .email-item.unread {
   border-left: 4px solid #6a85f1;
   background-color: #eef1ff;
+  transition: border-left-color 0.3s ease, background-color 0.3s ease;
+}
+
+.email-item.marking-read {
+  border-left-color: #ccc;
+  background-color: #f8f9fa;
 }
 
 .email-item.selected {
@@ -1346,6 +1352,54 @@
 
 .modal-actions .cancel-btn:hover {
   background-color: #e0e0e0;
+}
+
+.save-template-btn {
+  background: linear-gradient(135deg, #6a85f1, #b065f3);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  margin-bottom: 10px;
+}
+
+.save-template-btn:hover {
+  transform: scale(1.05);
+}
+
+.save-template-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.template-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.template-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.template-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.template-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 @keyframes popIn {
