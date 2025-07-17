@@ -1,0 +1,380 @@
+/* CompaniesList.css - Enhanced Design */
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
+
+.companies-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  min-height: 100vh;
+}
+
+.companies-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 25px 30px;
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.companies-header h1 {
+  color: white;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-company-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  text-decoration: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.add-company-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Companies Grid */
+.companies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 25px;
+}
+
+.company-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.company-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  background: white;
+}
+
+.company-card.inactive {
+  opacity: 0.7;
+}
+
+.company-card.inactive:hover {
+  opacity: 0.9;
+}
+
+.company-header {
+  padding: 25px 25px 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.company-header h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+.status-indicator.active {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.2);
+}
+
+.status-indicator.inactive {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.2);
+}
+
+.company-info {
+  padding: 25px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 8px 0;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-icon {
+  color: #667eea;
+  margin-right: 12px;
+  min-width: 18px;
+  font-size: 16px;
+}
+
+.info-item p {
+  margin: 0;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.company-actions {
+  padding: 20px 25px;
+  background: rgba(248, 249, 250, 0.5);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  text-align: right;
+}
+
+.login-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+/* No companies state */
+.no-companies {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 80px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.no-companies .icon {
+  font-size: 80px;
+  color: rgba(102, 126, 234, 0.3);
+  margin-bottom: 25px;
+  display: block;
+}
+
+.no-companies h2 {
+  margin: 0 0 15px;
+  color: #2c3e50;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.no-companies p {
+  margin: 0 0 30px;
+  color: #7f8c8d;
+  font-size: 16px;
+}
+
+.register-button {
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-decoration: none;
+  padding: 15px 30px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.register-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+/* Loading state */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  grid-column: 1 / -1;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(102, 126, 234, 0.1);
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 25px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-container p {
+  color: #7f8c8d;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Error state */
+.error-message {
+  text-align: center;
+  padding: 60px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  grid-column: 1 / -1;
+}
+
+.error-message p {
+  color: #e74c3c;
+  margin: 0 0 25px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.error-message button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.error-message button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+/* Navigation back button */
+.back-navigation {
+  position: fixed;
+  top: 30px;
+  left: 30px;
+  z-index: 1000;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .companies-container {
+    padding: 20px 15px;
+  }
+  
+  .companies-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 20px 25px;
+  }
+  
+  .companies-header h1 {
+    font-size: 24px;
+  }
+  
+  .companies-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .company-card {
+    margin: 0 5px;
+  }
+  
+  .back-navigation {
+    top: 20px;
+    left: 20px;
+  }
+  
+  .back-button {
+    padding: 8px 15px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .companies-container {
+    padding: 15px 10px;
+  }
+  
+  .companies-header {
+    padding: 15px 20px;
+  }
+  
+  .company-header,
+  .company-info,
+  .company-actions {
+    padding: 20px;
+  }
+  
+  .no-companies {
+    padding: 60px 15px;
+  }
+  
+  .no-companies .icon {
+    font-size: 60px;
+  }
+}
