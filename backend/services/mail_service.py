@@ -102,8 +102,9 @@ class MailService:
     def send_mail(sender, recipient, subject, body, attachment=None):
         """Send an email"""
         users = load_users()
-        
+        print(f'Users: {users}')
         # Check if sender and recipient exist
+
         if sender not in users or recipient not in users:
             return False, "Sender or recipient not found"
         

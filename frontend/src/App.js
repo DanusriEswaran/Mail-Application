@@ -5,6 +5,7 @@ import Login from "./components/login";
 import Dashboard from "./components/dashboard";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import './styles/design-systems.css';
 import "@fortawesome/fontawesome-free/css/all.min.css";
 
 // Import admin components

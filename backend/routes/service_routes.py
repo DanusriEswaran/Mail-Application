@@ -192,7 +192,7 @@ def send_email_service():
             return jsonify({'error': 'API key required'}), 401
         
         # TODO: Implement API key validation - for now, accept any key
-        if api_key != 'demo_key_12345':
+        if api_key != '473c234bd13aedb2bd90ee75259ecbec792e0e04780c2ba27f20c83846cc8d3b':
             return jsonify({'error': 'Invalid API key'}), 401
         
         sender = data.get('from')
@@ -200,7 +200,7 @@ def send_email_service():
         subject = data.get('subject', '')
         body = data.get('body', '')
         attachment = data.get('attachment')
-        
+        print(f'Arrives: {sender},{recipient}')
         if not all([sender, recipient]):
             return jsonify({'error': 'Sender and recipient are required'}), 400
         
@@ -286,3 +286,47 @@ def api_documentation():
     }
     
     return jsonify(docs), 200
+
+@service_bp.route('/verify_email', methods=['POST'])
+def verify_email_exists():
+    """Verify if an email exists in the system - returns 200 if valid, 404 if not"""
+    try:
+        data = request.get_json()
+        
+        # Get email from request
+        email = data.get('email', '').strip().lower() if data else ''
+        
+        # Handle case where email is sent as query parameter instead of JSON body
+        if not email:
+            email = request.args.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({'error': 'Email parameter is required'}), 400
+        
+        # Load users and check if email exists
+        users = load_users()
+        
+        if email in users:
+            # Email exists - return 200 with user info
+            user_data = users[email]
+            return jsonify({
+                'email': email,
+                'exists': True,
+                'username': user_data.get('username'),
+                'status': user_data.get('status', 'active'),
+                'verified': True
+            }), 200
+        else:
+            # Email doesn't exist - return 404
+            return jsonify({
+                'email': email,
+                'exists': False,
+                'verified': False,
+                'error': 'Email not found'
+            }), 404
+        
+    except Exception as e:
+        return jsonify({
+            'error': f'Verification failed: {str(e)}',
+            'verified': False
+        }), 500
