@@ -54,7 +54,8 @@ function Login() {
     setIsLoggingIn(true);
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/login`, {
+      // ✅ CORRECT ENDPOINT - Using /auth/login
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, {
         email: email.trim().toLowerCase(),
         password,
       });

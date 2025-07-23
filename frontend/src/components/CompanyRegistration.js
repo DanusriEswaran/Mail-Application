@@ -29,7 +29,8 @@ function CompanyRegistration() {
     setMessage("");
     
     try {
-      const res = await axios.post(`${API_BASE_URL}/check_domain`, { 
+      // ✅ CORRECT ENDPOINT - Using /company/check_domain
+      const res = await axios.post(`${API_BASE_URL}/company/check_domain`, { 
         domain: domainToCheck.trim().toLowerCase() 
       });
       
@@ -116,7 +117,7 @@ function CompanyRegistration() {
     
     try {
       // Final domain availability check before registration
-      const domainCheckRes = await axios.post(`${API_BASE_URL}/check_domain`, { 
+      const domainCheckRes = await axios.post(`${API_BASE_URL}/company/check_domain`, { 
         domain: domain.trim().toLowerCase() 
       });
       
@@ -128,7 +129,8 @@ function CompanyRegistration() {
       }
       
       // Proceed with registration
-      const res = await axios.post(`${API_BASE_URL}/register_company`, {
+      // ✅ CORRECT ENDPOINT - Using /company/register_company
+      const res = await axios.post(`${API_BASE_URL}/company/register_company`, {
         company_name: companyName.trim(),
         domain: domain.trim().toLowerCase(),
         admin_name: adminName.trim()

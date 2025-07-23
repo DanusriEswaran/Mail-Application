@@ -27,7 +27,8 @@ function AdminLogin() {
     }
     
     try {
-      const res = await axios.post(`${API_BASE_URL}/login`, {
+      // ✅ CORRECT ENDPOINT - Using /auth/login (same endpoint for both user and admin)
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, {
         email,
         password,
       });

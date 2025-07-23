@@ -25,101 +25,76 @@ function Register() {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
-  // Email validation
-  const isValidEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const validateForm = () => {
+    if (!username.trim()) {
+      setMessage("❌ Username is required");
+      return false;
+    }
 
-  // Password validation
-  const isValidPassword = (password) => {
-    // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
-    return passwordRegex.test(password);
+    if (username.trim().length < 2) {
+      setMessage("❌ Username must be at least 2 characters long");
+      return false;
+    }
+
+    if (!email.trim()) {
+      setMessage("❌ Email is required");
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setMessage("❌ Please enter a valid email address");
+      return false;
+    }
+
+    if (!password) {
+      setMessage("❌ Password is required");
+      return false;
+    }
+
+    if (password.length < 6) {
+      setMessage("❌ Password must be at least 6 characters long");
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      setMessage("❌ Passwords do not match");
+      return false;
+    }
+
+    return true;
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setMessage("");
 
-    // Client-side validation
-    if (!username.trim()) {
-      setMessage("Username is required");
-      return;
-    }
-
-    if (username.length < 3) {
-      setMessage("Username must be at least 3 characters long");
-      return;
-    }
-
-    if (!email.trim()) {
-      setMessage("Email is required");
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      setMessage("Please enter a valid email address");
-      return;
-    }
-
-    if (!password) {
-      setMessage("Password is required");
-      return;
-    }
-
-    if (!isValidPassword(password)) {
-      setMessage("Password must be at least 8 characters with uppercase, lowercase, and number");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setMessage("Passwords do not match");
+    if (!validateForm()) {
       return;
     }
 
     setIsRegistering(true);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/register`, {
+      // ✅ CORRECT ENDPOINT - Using /auth/register
+      const res = await axios.post(`${API_BASE_URL}/auth/register`, {
         username: username.trim(),
         email: email.trim().toLowerCase(),
-        password,
+        password: password
       });
 
-      // Check if registration was successful
-      if (response.data.message && response.data.message.includes('successfully')) {
-        setMessage("✅ " + response.data.message);
-        
-        // Show success message for 2 seconds, then redirect to login
-        setTimeout(() => {
-          setMessage("🔄 Redirecting to login page...");
-          
-          // Clear form
-          setUsername("");
-          setEmail("");
-          setPassword("");
-          setConfirmPassword("");
-          
-          // Redirect to login page after another second
-          setTimeout(() => {
-            navigate("/login", { 
-              state: { 
-                registrationSuccess: true, 
-                email: email.trim().toLowerCase(),
-                message: "Registration successful! Please login with your credentials."
-              } 
-            });
-          }, 1000);
-        }, 2000);
-        
-      } else {
-        // Handle unexpected response format
-        setMessage("Registration completed, but please login manually");
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
-      }
+      setMessage("✅ Registration successful! Redirecting to login...");
+      
+      // Redirect to login page with success message
+      setTimeout(() => {
+        navigate("/login", { 
+          state: { 
+            registrationSuccess: true,
+            message: "Registration successful! Please login with your credentials.",
+            email: email.trim().toLowerCase()
+          }
+        });
+      }, 1500);
 
     } catch (error) {
       console.error("Registration error:", error);
@@ -128,10 +103,10 @@ function Register() {
       
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
-      } else if (error.response?.status === 409) {
-        errorMessage = "This email is already registered. Please use a different email or try logging in.";
       } else if (error.response?.status === 400) {
         errorMessage = "Invalid input. Please check your details and try again.";
+      } else if (error.response?.status === 409) {
+        errorMessage = "User already exists with this email address.";
       } else if (error.response?.status === 500) {
         errorMessage = "Server error. Please try again later.";
       } else if (error.code === 'NETWORK_ERROR') {
@@ -146,20 +121,19 @@ function Register() {
 
   return (
     <div className="auth-container">
-      <h2>Create Your Account</h2>
-      <p className="subtitle">Join us and start managing your emails efficiently</p>
+      <h2>Create Account</h2>
+      <p className="subtitle">Join our mail service and start communicating</p>
       
       <form onSubmit={handleRegister}>
         <div className="input-wrapper">
           <input
             type="text"
-            placeholder="Enter your username"
+            placeholder="Full Name"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
-            minLength={3}
-            maxLength={50}
             disabled={isRegistering}
+            maxLength={50}
           />
           <FaUser className="input-icon" />
         </div>
@@ -167,12 +141,12 @@ function Register() {
         <div className="input-wrapper">
           <input
             type="email"
-            placeholder="Enter your email"
+            placeholder="Email Address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            maxLength={100}
             disabled={isRegistering}
+            maxLength={100}
           />
           <FaEnvelope className="input-icon" />
         </div>
@@ -180,13 +154,12 @@ function Register() {
         <div className="input-wrapper">
           <input
             type={showPassword ? "text" : "password"}
-            placeholder="Enter your password"
+            placeholder="Password (min 6 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={8}
-            maxLength={100}
             disabled={isRegistering}
+            minLength={6}
           />
           <span
             onClick={togglePasswordVisibility}
@@ -200,13 +173,12 @@ function Register() {
         <div className="input-wrapper">
           <input
             type={showConfirmPassword ? "text" : "password"}
-            placeholder="Confirm your password"
+            placeholder="Confirm Password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            minLength={8}
-            maxLength={100}
             disabled={isRegistering}
+            minLength={6}
           />
           <span
             onClick={toggleConfirmPasswordVisibility}
@@ -225,10 +197,10 @@ function Register() {
           {isRegistering ? (
             <>
               <FaSpinner style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
-              Registering...
+              Creating Account...
             </>
           ) : (
-            'Register'
+            'Create Account'
           )}
         </button>
       </form>

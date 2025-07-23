@@ -43,7 +43,7 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* Admin routes - Fixed paths to match your component navigation */}
+          {/* Admin routes */}
           <Route path="/admin/register" element={<CompanyRegistration />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={

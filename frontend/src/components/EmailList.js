@@ -25,52 +25,76 @@ const EmailList = ({
   // Email actions
   const handleMarkAsRead = async (mail) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/mark_read`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/mark_read
+      const res = await fetch(`${API_BASE_URL}/mail/mark_read`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, mail, activeTab }),
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ mail, activeTab }),
       });
       if (res.ok) {
         // Use a small delay to batch multiple updates if needed
         setTimeout(() => {
           onRefresh();
         }, 100);
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to mark as read");
       }
     } catch (err) {
       console.error("Error marking as read:", err);
+      toast.error("Error marking as read");
     }
   };
 
   const handleMarkAsUnread = async (mail) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/mark_unread`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/mark_unread
+      const res = await fetch(`${API_BASE_URL}/mail/mark_unread`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, mail, activeTab }),
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ mail, activeTab }),
       });
       if (res.ok) {
         onRefresh();
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to mark as unread");
       }
     } catch (err) {
       console.error("Error marking as unread:", err);
+      toast.error("Error marking as unread");
     }
   };
 
   const handleMoveToTrash = async (mailToDelete) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/delete_mail`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/delete_mail
+      const res = await fetch(`${API_BASE_URL}/mail/delete_mail`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mail: mailToDelete, activeTab, token }),
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ mail: mailToDelete, activeTab }),
       });
       const result = await res.json();
 
       if (result.message === "Deleted successfully") {
         onRefresh();
         fetchTrash();
+        toast.success("Email moved to trash");
+      } else {
+        toast.error(result.error || "Failed to delete email");
       }
     } catch (err) {
       console.error("Error moving to trash:", err);
+      toast.error("Error moving to trash");
     }
   };
 
@@ -79,16 +103,26 @@ const EmailList = ({
       "Are you sure you want to permanently delete this email?",
       async () => {
         try {
-          const res = await fetch(`${API_BASE_URL}/permanent_delete`, {
+          // ✅ CORRECT ENDPOINT - Using /mail/permanent_delete
+          const res = await fetch(`${API_BASE_URL}/mail/permanent_delete`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token, mail }),
+            headers: { 
+              "Content-Type": "application/json",
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ mail }),
           });
+          
           if (res.ok) {
             fetchTrash();
+            toast.success("Email permanently deleted");
+          } else {
+            const errorData = await res.json();
+            toast.error(errorData.error || "Failed to delete email permanently");
           }
         } catch (err) {
           console.error("Error permanently deleting:", err);
+          toast.error("Error permanently deleting email");
         }
       }
     );
@@ -96,11 +130,16 @@ const EmailList = ({
 
   const handleRestoreEmail = async (mail) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/restore_email`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/restore_email
+      const res = await fetch(`${API_BASE_URL}/mail/restore_email`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, mail }),
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ mail }),
       });
+      
       if (res.ok) {
         fetchTrash(); // Update trash count
         onRefresh(); // Update current folder
@@ -109,36 +148,52 @@ const EmailList = ({
         // Check if it's an inbox or sent email and refresh accordingly
         if (fetchInbox) fetchInbox(); // Refresh inbox
         if (fetchSent) fetchSent(); // Refresh sent
+        toast.success("Email restored successfully");
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to restore email");
       }
     } catch (err) {
       console.error("Error restoring email:", err);
+      toast.error("Error restoring email");
     }
   };
 
   const handleDeleteDraft = async (draft) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/delete_draft`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/delete_draft
+      const res = await fetch(`${API_BASE_URL}/mail/delete_draft`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, draft }),
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ draft }),
       });
+      
       if (res.ok) {
         onRefresh();
+        toast.success("Draft deleted");
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to delete draft");
       }
     } catch (err) {
       console.error("Error deleting draft:", err);
+      toast.error("Error deleting draft");
     }
   };
 
   const handleDeleteScheduled = async (mail) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/delete_mail`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/delete_mail
+      const res = await fetch(`${API_BASE_URL}/mail/delete_mail`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          token,
           activeTab: "scheduled",
           mail: {
             from: mail.from,
@@ -153,6 +208,7 @@ const EmailList = ({
 
       if (result.message === "Deleted successfully") {
         onRefresh();
+        toast.success("Scheduled email deleted");
       } else {
         toast.error(result.error || "Failed to delete scheduled email.");
       }
@@ -166,16 +222,20 @@ const EmailList = ({
     if (selectedEmails.length === 0) return;
 
     try {
-      const res = await fetch(`${API_BASE_URL}/bulk_action`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/bulk_action
+      const res = await fetch(`${API_BASE_URL}/mail/bulk_action`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          token,
           action,
           emails: selectedEmails,
           folder: activeTab,
         }),
       });
+      
       if (res.ok) {
         onSelectEmails([]);
         onRefresh();
@@ -185,9 +245,15 @@ const EmailList = ({
           if (fetchInbox) fetchInbox();
           if (fetchSent) fetchSent();
         }
+        
+        toast.success(`Bulk ${action} completed successfully`);
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || `Failed to perform bulk ${action}`);
       }
     } catch (err) {
       console.error("Bulk action error:", err);
+      toast.error(`Error performing bulk ${action}`);
     }
   };
 
@@ -246,11 +312,12 @@ const EmailList = ({
         <div className="empty-state">
           <div className="empty-icon">{emptyState.icon}</div>
           <h3>{emptyState.text}</h3>
+          {isSearching && <p>Try adjusting your search terms</p>}
         </div>
       ) : (
         emails.map((mail, index) => (
           <EmailItem
-            key={index}
+            key={`${mail.from}-${mail.to}-${mail.subject}-${index}`}
             mail={mail}
             index={index}
             activeTab={activeTab}

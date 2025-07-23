@@ -41,7 +41,8 @@ function AdminDashboard() {
     setError("");
     
     try {
-      const response = await axios.get(`${API_BASE_URL}/domain_users/${adminDomain}`, {
+      // ✅ CORRECT ENDPOINT - Using /company/domain_users
+      const response = await axios.get(`${API_BASE_URL}/company/domain_users/${adminDomain}`, {
         headers: { 
           'Authorization': `Bearer ${adminToken}`,
           'Content-Type': 'application/json'
@@ -84,7 +85,8 @@ function AdminDashboard() {
   // Fetch domain statistics
   const fetchDomainStats = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/domain_stats/${adminDomain}`, {
+      // ✅ CORRECT ENDPOINT - Using /company/domain_stats
+      const response = await axios.get(`${API_BASE_URL}/company/domain_stats/${adminDomain}`, {
         headers: { 
           'Authorization': `Bearer ${adminToken}`,
           'Content-Type': 'application/json'

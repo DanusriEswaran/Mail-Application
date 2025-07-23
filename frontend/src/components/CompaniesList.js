@@ -23,14 +23,15 @@ function CompaniesList() {
       const adminToken = localStorage.getItem("admin_token");
       const headers = adminToken ? { 'MAIL-KEY': adminToken } : {};
       
-      const res = await axios.get(`${API_BASE_URL}/companies`, { headers });
+      // ✅ CORRECT ENDPOINT - Using /company/companies
+      const res = await axios.get(`${API_BASE_URL}/company/companies`, { headers });
       setCompanies(res.data.companies || []);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching companies:", error);
       setError("Failed to load companies. Please try again.");
       
-      // Simulated data for demo purposes
+      // Simulated data for demo purposes if API fails
       setCompanies([
         { 
           id: "acme_inc", 

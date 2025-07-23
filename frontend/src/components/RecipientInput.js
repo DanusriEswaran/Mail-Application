@@ -8,7 +8,13 @@ const RecipientInput = ({ recipient, onRecipientChange, token }) => {
 
   const fetchRecipients = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/recipients`);
+      // ✅ CORRECT ENDPOINT - Using /mail/recipients
+      const res = await fetch(`${API_BASE_URL}/mail/recipients`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await res.json();
       setKnownRecipients(data.recipients || []);
     } catch (err) {
@@ -17,7 +23,9 @@ const RecipientInput = ({ recipient, onRecipientChange, token }) => {
   };
 
   const handleFocus = () => {
-    fetchRecipients();
+    if (token) {
+      fetchRecipients();
+    }
     setShowSuggestions(true);
   };
 

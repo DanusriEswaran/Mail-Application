@@ -43,11 +43,14 @@ const ComposeModal = ({
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("token", token);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/upload`, {
+      // ✅ CORRECT ENDPOINT - Using /file/upload
+      const res = await fetch(`${API_BASE_URL}/file/upload`, {
         method: "POST",
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       });
       const data = await res.json();
@@ -70,11 +73,14 @@ const ComposeModal = ({
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/send`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/send
+      const res = await fetch(`${API_BASE_URL}/mail/send`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          token,
           to: recipient,
           subject,
           body,
@@ -105,22 +111,29 @@ const ComposeModal = ({
 
   const handleSaveDraft = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/save_draft`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/save_draft
+      const res = await fetch(`${API_BASE_URL}/mail/save_draft`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          token,
           to: recipient,
           subject,
           body,
           attachment,
         }),
       });
+      
       if (res.ok) {
         toast.success("Draft saved successfully!");
         onDraftSaved();
         onClose();
         resetForm();
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || "Failed to save draft");
       }
     } catch (err) {
       console.error("Error saving draft:", err);
@@ -130,10 +143,14 @@ const ComposeModal = ({
 
   const handleDeleteDraft = async (draft) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/delete_draft`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/delete_draft
+      const res = await fetch(`${API_BASE_URL}/mail/delete_draft`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, draft }),
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ draft }),
       });
       return res.ok;
     } catch (err) {
@@ -153,13 +170,28 @@ const ComposeModal = ({
       return;
     }
 
+    if (!recipient.trim()) {
+      toast.error("Please enter a recipient");
+      return;
+    }
+
     const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}`);
+    
+    // Check if scheduled time is in the future
+    if (scheduledDateTime <= new Date()) {
+      toast.error("Scheduled time must be in the future");
+      return;
+    }
+    
     try {
-      const res = await fetch(`${API_BASE_URL}/schedule`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/schedule
+      const res = await fetch(`${API_BASE_URL}/mail/schedule`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          token,
           to: recipient,
           subject,
           body,
@@ -283,6 +315,7 @@ const ComposeModal = ({
             <button
               className="btn secondary"
               onClick={() => setShowScheduleModal(true)}
+              disabled={!recipient.trim()}
             >
               Schedule & Send
             </button>

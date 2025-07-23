@@ -43,7 +43,13 @@ const Dashboard = () => {
   // Fetch functions
   const fetchInbox = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/inbox/${email}`);
+      // ✅ CORRECT ENDPOINT - Using /mail/inbox
+      const res = await fetch(`${API_BASE_URL}/mail/inbox/${email}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await res.json();
       if (data.inbox) {
         const filteredInbox = data.inbox.filter(
@@ -53,12 +59,19 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error("Error fetching inbox:", err);
+      toast.error("Failed to load inbox");
     }
   };
 
   const fetchSent = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/sent/${email}`);
+      // ✅ CORRECT ENDPOINT - Using /mail/sent
+      const res = await fetch(`${API_BASE_URL}/mail/sent/${email}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await res.json();
       if (data.sent) {
         const filteredSent = data.sent.filter(
@@ -68,73 +81,111 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error("Error fetching sent:", err);
+      toast.error("Failed to load sent emails");
     }
   };
 
   const fetchDrafts = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/drafts/${email}`);
+      // ✅ CORRECT ENDPOINT - Using /mail/drafts
+      const res = await fetch(`${API_BASE_URL}/mail/drafts/${email}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await res.json();
       if (data.drafts) {
         setDrafts(data.drafts);
       }
     } catch (err) {
       console.error("Error fetching drafts:", err);
+      toast.error("Failed to load drafts");
     }
   };
 
   const fetchTrash = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/trash/${email}`);
+      // ✅ CORRECT ENDPOINT - Using /mail/trash
+      const res = await fetch(`${API_BASE_URL}/mail/trash/${email}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await res.json();
       if (data.trash) {
         setTrash(data.trash);
       }
     } catch (error) {
       console.error("Failed to fetch trash emails:", error);
+      toast.error("Failed to load trash");
     }
   };
 
   const fetchTemplates = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/templates/${email}`);
+      // ✅ CORRECT ENDPOINT - Using /template/templates
+      const res = await fetch(`${API_BASE_URL}/template/templates/${email}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await res.json();
       if (data.templates) {
         setTemplates(data.templates);
       }
     } catch (err) {
       console.error("Error fetching templates:", err);
+      toast.error("Failed to load templates");
     }
   };
 
   const fetchStorage = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/storage/${email}`);
+      // ✅ CORRECT ENDPOINT - Using /mail/storage
+      const res = await fetch(`${API_BASE_URL}/mail/storage/${email}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await res.json();
       setStorageInfo(data);
     } catch (err) {
       console.error("Error fetching storage:", err);
+      toast.error("Failed to load storage info");
     }
   };
 
   const fetchEmailStats = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/stats/${email}`);
+      // ✅ CORRECT ENDPOINT - Using /mail/stats
+      const res = await fetch(`${API_BASE_URL}/mail/stats/${email}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       const data = await res.json();
       setEmailStats(data);
     } catch (err) {
       console.error("Error fetching email stats:", err);
+      toast.error("Failed to load email stats");
     }
   };
 
   const fetchScheduled = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/scheduled`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/scheduled
+      const res = await fetch(`${API_BASE_URL}/mail/scheduled`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({}),
       });
 
       const data = await res.json();
@@ -164,11 +215,14 @@ const Dashboard = () => {
 
     setIsSearching(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/search`, {
+      // ✅ CORRECT ENDPOINT - Using /mail/search
+      const res = await fetch(`${API_BASE_URL}/mail/search`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
-          token,
           query: searchQuery,
           folder: activeTab === "sent" ? "sent" : "inbox",
         }),
@@ -179,11 +233,18 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error("Search error:", err);
+      toast.error("Search failed");
+    } finally {
+      setIsSearching(false);
     }
   };
 
   // Get current emails based on active tab
   const getCurrentEmails = () => {
+    if (searchQuery.trim() && searchResults.length > 0) {
+      return searchResults;
+    }
+    
     switch (activeTab) {
       case "inbox":
         return inbox;
@@ -223,11 +284,19 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    fetch(`${API_BASE_URL}/logout`, {
+    // ✅ CORRECT ENDPOINT - Using /auth/logout
+    fetch(`${API_BASE_URL}/auth/logout`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
+      headers: { 
+        "Content-Type": "application/json",
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({}),
     }).then(() => {
+      localStorage.clear();
+      window.location.href = "/";
+    }).catch(() => {
+      // Even if logout fails, clear local storage and redirect
       localStorage.clear();
       window.location.href = "/";
     });
@@ -237,6 +306,8 @@ const Dashboard = () => {
     setActiveTab(tab);
     setSelectedEmail(null);
     setSearchQuery("");
+    setSearchResults([]);
+    setIsSearching(false);
     
     switch (tab) {
       case "inbox":
@@ -268,21 +339,32 @@ const Dashboard = () => {
 
   // Initial data fetch
   useEffect(() => {
+    // Check if user is authenticated
+    if (!token || !email) {
+      localStorage.clear();
+      window.location.href = "/login";
+      return;
+    }
+
     fetchInbox();
     fetchSent();
     fetchDrafts();
     fetchEmailStats();
-  }, []);
+  }, [token, email]);
 
   // Search effect
   useEffect(() => {
-    if (searchQuery.trim()) {
-      handleSearch();
-    } else {
-      setSearchResults([]);
-      setIsSearching(false);
-    }
-  }, [searchQuery]);
+    const searchTimeout = setTimeout(() => {
+      if (searchQuery.trim()) {
+        handleSearch();
+      } else {
+        setSearchResults([]);
+        setIsSearching(false);
+      }
+    }, 500); // Debounce search
+
+    return () => clearTimeout(searchTimeout);
+  }, [searchQuery, activeTab]);
 
   const renderMainContent = () => {
     switch (activeTab) {
