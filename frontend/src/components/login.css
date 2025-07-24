@@ -29,17 +29,17 @@ body::before {
 
 /* Main auth container */
 .auth-container {
+  max-width: 1000px;
   width: 100%;
-  max-width: 500px;
-  padding: 30px 25px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 20px;
-  backdrop-filter: blur(15px);
+  backdrop-filter: blur(12px);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
   color: white;
+  padding: 40px;
   text-align: center;
-  z-index: 1;
-  margin: 20px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* Logo */
@@ -53,48 +53,51 @@ body::before {
 }
 
 /* Headers */
-.auth-container h2 {
-  font-size: 32px;
-  font-weight: bold;
-  margin-bottom: 10px;
-  background: linear-gradient(to right, #225a8b, #8e2729);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.login-title {
+  font-size: 28px;
+  margin-bottom: 5px;
 }
 
 .subtitle {
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 20px;
-  font-size: 14px;
+  color: #ccc;
+  margin-bottom: 25px;
+  font-size: 16px;
   line-height: 1.4;
 }
 
-/* Form styling */
-.auth-container form {
+.auth-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 30px;
+}
+
+.auth-left,
+.auth-right {
+  flex: 1 1 45%;
+  text-align: left;
+
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  justify-content: center;
+}
+
+.auth-left form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 /* Input wrapper */
 .input-wrapper {
   position: relative;
-  width: 100%;
-  margin: 12px 0;
 }
 
 .input-wrapper input {
   width: 100%;
-  padding: 12px 40px 12px 12px;
+  padding: 10px 35px 10px 10px;
+  border-radius: 8px;
   border: none;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.3);
-  color: rgba(52, 51, 51, 0.9);
-  font-size: 16px;
-  backdrop-filter: blur(10px);
-  box-sizing: border-box;
-  transition: all 0.3s ease;
 }
 
 .input-wrapper input:disabled {
@@ -129,6 +132,22 @@ body::before {
 
 .input-icon.clickable:hover {
   color: rgba(52, 51, 51, 0.9);
+}
+
+.vertical-separator {
+  width: 1px;
+  background-color: rgba(255, 255, 255, 0.2);
+  margin: 10px 0;
+}
+
+.auth-right p,
+.auth-right .company-option {
+  margin-bottom: 15px;
+}
+
+.separator {
+  text-align: center;
+  margin: 20px 0;
 }
 
 /* Buttons */
@@ -169,12 +188,6 @@ body::before {
   transform: none !important;
 }
 
-/* Spinner animation */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 /* Messages */
 .message {
   margin-top: 15px;
@@ -195,11 +208,6 @@ body::before {
   border: 1px solid rgba(231, 76, 60, 0.4);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 /* Auth options */
 .auth-options {
   margin-top: 25px;
@@ -208,16 +216,10 @@ body::before {
 .auth-options p {
   margin: 15px 0;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(29, 28, 28, 0.9);
 }
 
 /* Separator */
-.separator {
-  margin: 20px 0;
-  position: relative;
-  text-align: center;
-}
-
 .separator::before {
   content: "";
   position: absolute;
@@ -231,7 +233,7 @@ body::before {
 .separator span {
   background: rgba(255, 255, 255, 0.2);
   padding: 0 15px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(19, 18, 18, 0.8);
   font-size: 12px;
   backdrop-filter: blur(10px);
 }
@@ -263,6 +265,7 @@ body::before {
 
 .company-icon {
   font-size: 16px;
+  margin-right: 8px;
 }
 
 /* Links */
@@ -280,7 +283,8 @@ body::before {
 .admin-link:hover,
 .login-link:hover,
 .main-link:hover {
-  color: #2980b9;
+  color: #00bfff;
+  font-weight: 500;
   text-decoration: underline;
 }
 
@@ -318,21 +322,41 @@ body::before {
 }
 
 /* Responsive design */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 768px) {
   .auth-container {
     margin: 10px;
     padding: 20px 15px;
     max-width: 90%;
   }
-  
+
   .auth-container h2 {
     font-size: 28px;
   }
-  
+
   .input-wrapper input {
     padding: 10px 35px 10px 10px;
   }
-  
+
   .company-link {
     padding: 10px 15px;
     font-size: 14px;
@@ -343,24 +367,24 @@ body::before {
   .auth-container {
     padding: 15px 10px;
   }
-  
+
   .auth-container h2 {
     font-size: 24px;
   }
-  
+
   .subtitle {
     font-size: 13px;
   }
-  
+
   .message {
     font-size: 13px;
     padding: 10px;
   }
-  
+
   .input-wrapper input {
     font-size: 14px;
   }
-  
+
   .auth-container button {
     font-size: 14px;
     padding: 10px;

@@ -48,5 +48,15 @@
     "date_of_send": "2025-07-07T00:18:46.678685",
     "message_status": "unread",
     "attachment": ""
+  },
+  {
+    "from": "shri@gmail.com",
+    "to": "lokhesh@gmail.com",
+    "subject": "Testing ",
+    "body": "gAAAAABogYtVR7qTouL5-pSVFyMEaKSeWiFq-VVmOsJELH-wZsA79YYzMG-BWplv0Xom406PvmHZEQKnigc6Hrg5_XVx6XJeRLHA5NjEINiYHAisUv0tV_A=",
+    "date_of_compose": "2025-07-24T06:54:37.314766",
+    "date_of_send": "2025-07-24T06:54:37.314766",
+    "message_status": "unread",
+    "attachment": ""
   }
 ]

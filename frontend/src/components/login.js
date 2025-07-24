@@ -3,7 +3,13 @@ import axios from "axios";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import "./Login.css";
 import { API_BASE_URL } from "../config";
-import { FaEnvelope, FaEye, FaEyeSlash, FaBuilding, FaSpinner } from "react-icons/fa";
+import {
+  FaEnvelope,
+  FaEye,
+  FaEyeSlash,
+  FaBuilding,
+  FaSpinner,
+} from "react-icons/fa";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -19,12 +25,12 @@ function Login() {
   useEffect(() => {
     if (location.state?.registrationSuccess) {
       setMessage("✅ " + location.state.message);
-      
+
       // Pre-fill email if available
       if (location.state.email) {
         setEmail(location.state.email);
       }
-      
+
       // Clear the success message after 5 seconds
       setTimeout(() => {
         setMessage("");
@@ -67,31 +73,33 @@ function Login() {
       localStorage.setItem("user_id", res.data.user_id);
 
       setMessage(`✅ Welcome ${res.data.username}!`);
-      
+
       // Show welcome message briefly, then redirect
       setTimeout(() => {
         navigate("/dashboard");
       }, 1000);
-
     } catch (error) {
       console.error("Login error:", error);
-      
+
       let errorMessage = "Login failed. Please try again.";
-      
+
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
       } else if (error.response?.status === 401) {
-        errorMessage = "Invalid email or password. Please check your credentials.";
+        errorMessage =
+          "Invalid email or password. Please check your credentials.";
       } else if (error.response?.status === 404) {
-        errorMessage = "Account not found. Please check your email or register a new account.";
+        errorMessage =
+          "Account not found. Please check your email or register a new account.";
       } else if (error.response?.status === 429) {
         errorMessage = "Too many login attempts. Please try again later.";
       } else if (error.response?.status === 500) {
         errorMessage = "Server error. Please try again later.";
-      } else if (error.code === 'NETWORK_ERROR') {
-        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (error.code === "NETWORK_ERROR") {
+        errorMessage =
+          "Network error. Please check your connection and try again.";
       }
-      
+
       setMessage("❌ " + errorMessage);
     } finally {
       setIsLoggingIn(false);
@@ -102,7 +110,7 @@ function Login() {
     <div className="auth-container">
       <h2>Login</h2>
       <p className="subtitle">Welcome back! Please login to your account</p>
-      
+
       <form onSubmit={handleLogin}>
         <div className="input-wrapper">
           <input
@@ -128,30 +136,35 @@ function Login() {
           <span
             onClick={togglePasswordVisibility}
             className="input-icon clickable"
-            style={{ cursor: isLoggingIn ? 'not-allowed' : 'pointer' }}
+            style={{ cursor: isLoggingIn ? "not-allowed" : "pointer" }}
           >
             {showPassword ? <FaEyeSlash /> : <FaEye />}
           </span>
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={isLoggingIn}
-          className={isLoggingIn ? 'button-disabled' : ''}
+          className={isLoggingIn ? "button-disabled" : ""}
         >
           {isLoggingIn ? (
             <>
-              <FaSpinner style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
+              <FaSpinner
+                style={{
+                  marginRight: "8px",
+                  animation: "spin 1s linear infinite",
+                }}
+              />
               Logging in...
             </>
           ) : (
-            'Login'
+            "Login"
           )}
         </button>
       </form>
 
       {message && (
-        <div className={`message ${message.includes('❌') ? 'error' : ''}`}>
+        <div className={`message ${message.includes("❌") ? "error" : ""}`}>
           {message}
         </div>
       )}
@@ -163,18 +176,18 @@ function Login() {
             Register
           </Link>
         </p>
-        
+
         <div className="separator">
           <span>OR</span>
         </div>
-        
+
         <div className="company-option">
           <Link to="/admin/register" className="company-link">
             <FaBuilding className="company-icon" />
             Register a Company Domain
           </Link>
         </div>
-        
+
         <p className="admin-login-text">
           Already have a company?{" "}
           <Link to="/admin/login" className="admin-link">
