@@ -8,5 +8,15 @@
     "date_of_send": "2025-06-30T11:54:30.822640",
     "message_status": "deleted",
     "attachment": "/attachments/99937402-ec9c-481f-a45d-7e873dcbdce1_MailIcon.png"
+  },
+  {
+    "from": "danus@gmail.com",
+    "to": "danusri@gmail.com",
+    "subject": "test",
+    "body": "gAAAAABogmTWIsWIS6qbriF2FxVZqCFmp8MND1yC35gaI1xq25YUkslZVtFtVkApxlJGDDeeyqOHyOQIgKS2rRXf6oca9qCQig==",
+    "date_of_compose": "2025-07-24T22:22:38.182424",
+    "date_of_send": "2025-07-24T22:22:38.182424",
+    "message_status": "unread",
+    "attachment": ""
   }
 ]

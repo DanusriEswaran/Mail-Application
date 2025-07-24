@@ -1,6 +1,4 @@
-/* Updated Login.css with improvements */
-
-/* Global styles for auth components */
+/* Global styles*/
 body {
   margin: 0;
   padding: 0;
@@ -29,66 +27,54 @@ body::before {
 
 /* Main auth container */
 .auth-container {
-  max-width: 1000px;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.05);
+  width: 500px;
+  padding: 30px 25px;
   border-radius: 20px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(
+    135deg,
+    rgba(66, 64, 64, 0.4),
+    rgba(89, 87, 87, 0.2)
+  ) !important;
+  -webkit-backdrop-filter: blur(25px);
+  backdrop-filter: blur(25px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4),
+    inset 0 0 10px rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  padding: 40px;
   text-align: center;
   overflow: hidden;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 
-/* Logo */
 .auth-container::before {
   content: "";
   display: block;
   background: url("logo.png") no-repeat center top;
-  background-size: 120px;
+  background-size: 140px;
   height: 120px;
-  margin: 0 auto 20px auto;
+  margin: 0 auto 5px auto;
 }
 
-/* Headers */
-.login-title {
-  font-size: 28px;
-  margin-bottom: 5px;
+.auth-container h2 {
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  background: linear-gradient(to right, #a18cd1, #fbc2eb);
+
+  -webkit-background-clip: text; /* for Chrome, Safari */
+  background-clip: text; /* standard (future-facing) */
+  -webkit-text-fill-color: transparent;
 }
 
 .subtitle {
-  color: #ccc;
+  color: #aba9a9;
   margin-bottom: 25px;
   font-size: 16px;
   line-height: 1.4;
 }
 
-.auth-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 30px;
-}
-
-.auth-left,
-.auth-right {
-  flex: 1 1 45%;
-  text-align: left;
-
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.auth-left form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* Input wrapper */
 .input-wrapper {
   position: relative;
 }
@@ -106,7 +92,8 @@ body::before {
 }
 
 .input-wrapper input::placeholder {
-  color: rgba(52, 51, 51, 0.6);
+  color: #b6b6b6 !important;
+  font-style: italic;
 }
 
 .input-wrapper input:focus:not(:disabled) {
@@ -115,13 +102,29 @@ body::before {
   box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
 }
 
+.auth-container input {
+  width: 100%;
+  padding: 5px 0;
+  margin: 10px 0;
+  border: none;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.6);
+  background: transparent;
+  color: white;
+  font-size: 16px;
+  outline: none;
+}
+
+.auth-container input::placeholder {
+  color: rgba(52, 51, 51, 0.829);
+}
+
 /* Input icons */
 .input-icon {
   position: absolute;
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(52, 51, 51, 0.7);
+  color: rgba(109, 109, 109, 0.7);
   cursor: default;
   transition: color 0.3s ease;
 }
@@ -134,20 +137,9 @@ body::before {
   color: rgba(52, 51, 51, 0.9);
 }
 
-.vertical-separator {
-  width: 1px;
-  background-color: rgba(255, 255, 255, 0.2);
-  margin: 10px 0;
-}
-
-.auth-right p,
-.auth-right .company-option {
-  margin-bottom: 15px;
-}
-
-.separator {
-  text-align: center;
-  margin: 20px 0;
+.input-wrapper input:disabled {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(109, 109, 109, 0.6);
 }
 
 /* Buttons */
@@ -156,25 +148,17 @@ body::before {
   padding: 12px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(90deg, #8e44ad, #3498db);
+  background: linear-gradient(90deg, #8e44ad, #6c5ce7, #3498db);
   color: white;
   font-weight: bold;
   font-size: 16px;
   margin-top: 10px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 48px;
+  transition: 0.3s ease;
 }
 
 .auth-container button:hover:not(.button-disabled) {
-  background: linear-gradient(90deg, #732d91, #2980b9);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(90deg, #732d91, #5e50c0, #2980b9);
 }
 
 .button-disabled {
@@ -184,31 +168,28 @@ body::before {
 }
 
 .button-disabled:hover {
-  background: linear-gradient(90deg, #8e44ad, #3498db) !important;
+  background: linear-gradient(90deg, #8e44ad, #6c5ce7, #3498db) !important;
   transform: none !important;
 }
 
-/* Messages */
-.message {
-  margin-top: 15px;
-  padding: 12px;
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 14px;
+.separator {
+  display: flex;
+  align-items: center;
   text-align: center;
-  line-height: 1.4;
-  animation: fadeIn 0.3s ease-in-out;
+  margin: 30px 0;
+  color: #ccc;
+  font-weight: 500;
+  font-size: 14px;
 }
 
-.message.error {
-  background-color: rgba(231, 76, 60, 0.2);
-  color: #ffcccc;
-  border: 1px solid rgba(231, 76, 60, 0.4);
+.separator::before,
+.separator::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  margin: 0 10px;
 }
 
-/* Auth options */
 .auth-options {
   margin-top: 25px;
 }
@@ -216,26 +197,7 @@ body::before {
 .auth-options p {
   margin: 15px 0;
   font-size: 14px;
-  color: rgba(29, 28, 28, 0.9);
-}
-
-/* Separator */
-.separator::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.separator span {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0 15px;
-  color: rgba(19, 18, 18, 0.8);
-  font-size: 12px;
-  backdrop-filter: blur(10px);
+  color: rgba(210, 171, 220, 0.9);
 }
 
 /* Company option */
@@ -246,21 +208,19 @@ body::before {
 .company-link {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(52, 152, 219, 0.2);
+  gap: 10px;
+  padding: 10px 20px;
+  background: linear-gradient(90deg, #732d91, #2980b9);
   color: white;
-  text-decoration: none;
-  padding: 12px 20px;
+  border: none;
   border-radius: 8px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(52, 152, 219, 0.3);
+  text-decoration: none;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
 }
 
 .company-link:hover {
-  background: rgba(52, 152, 219, 0.3);
-  border-color: rgba(52, 152, 219, 0.5);
-  transform: translateY(-2px);
+  background: linear-gradient(90deg, #8e44ad, #3498db);
 }
 
 .company-icon {
@@ -273,19 +233,39 @@ body::before {
 .admin-link,
 .login-link,
 .main-link {
-  color: #3498db;
-  font-weight: bold;
+  color: #c678e8; /* Elegant purple tone to match your button theme */
+  font-weight: 600;
   text-decoration: none;
+  position: relative;
   transition: all 0.3s ease;
+}
+
+.register-link::after,
+.admin-link::after,
+.login-link::after,
+.main-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #8e44ad, #6c5ce7, #3498db);
+  transition: width 0.3s ease;
+}
+
+.register-link:hover::after,
+.admin-link:hover::after,
+.login-link:hover::after,
+.main-link:hover::after {
+  width: 100%;
 }
 
 .register-link:hover,
 .admin-link:hover,
 .login-link:hover,
 .main-link:hover {
-  color: #00bfff;
-  font-weight: 500;
-  text-decoration: underline;
+  color: #6c5ce7;
 }
 
 /* Back to main */
@@ -298,19 +278,6 @@ body::before {
 .admin-login-text {
   font-size: 13px;
   margin-top: 10px;
-}
-
-/* Success message styling */
-.message:not(.error) {
-  background-color: rgba(46, 204, 113, 0.2);
-  color: #d5f4e6;
-  border: 1px solid rgba(46, 204, 113, 0.4);
-}
-
-/* Loading state for inputs */
-.input-wrapper input:disabled {
-  background: rgba(255, 255, 255, 0.2);
-  color: rgba(52, 51, 51, 0.6);
 }
 
 /* Focus states for accessibility */
@@ -374,11 +341,6 @@ body::before {
 
   .subtitle {
     font-size: 13px;
-  }
-
-  .message {
-    font-size: 13px;
-    padding: 10px;
   }
 
   .input-wrapper input {

@@ -10,6 +10,8 @@ import {
   FaBuilding,
   FaSpinner,
 } from "react-icons/fa";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -24,7 +26,7 @@ function Login() {
   // Check if user came from registration
   useEffect(() => {
     if (location.state?.registrationSuccess) {
-      setMessage("✅ " + location.state.message);
+      toast.success(location.state.message);
 
       // Pre-fill email if available
       if (location.state.email) {
@@ -60,7 +62,7 @@ function Login() {
     setIsLoggingIn(true);
 
     try {
-      // ✅ CORRECT ENDPOINT - Using /auth/login
+      // CORRECT ENDPOINT - Using /auth/login
       const res = await axios.post(`${API_BASE_URL}/auth/login`, {
         email: email.trim().toLowerCase(),
         password,
@@ -72,7 +74,7 @@ function Login() {
       localStorage.setItem("username", res.data.username);
       localStorage.setItem("user_id", res.data.user_id);
 
-      setMessage(`✅ Welcome ${res.data.username}!`);
+      toast.success(`Welcome ${res.data.username}!`);
 
       // Show welcome message briefly, then redirect
       setTimeout(() => {
@@ -100,7 +102,7 @@ function Login() {
           "Network error. Please check your connection and try again.";
       }
 
-      setMessage("❌ " + errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoggingIn(false);
     }
@@ -163,17 +165,11 @@ function Login() {
         </button>
       </form>
 
-      {message && (
-        <div className={`message ${message.includes("❌") ? "error" : ""}`}>
-          {message}
-        </div>
-      )}
-
       <div className="auth-options">
         <p>
           Don't have an account?{" "}
           <Link to="/register" className="register-link">
-            Register
+            Register here
           </Link>
         </p>
 
@@ -195,6 +191,14 @@ function Login() {
           </Link>
         </p>
       </div>
+      <ToastContainer
+        position="top-center"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        draggable
+        closeButton={false}
+      />
     </div>
   );
 }
