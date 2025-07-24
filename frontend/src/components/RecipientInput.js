@@ -1,14 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { API_BASE_URL } from "../config";
 
 const RecipientInput = ({ recipient, onRecipientChange, token }) => {
   const [suggestions, setSuggestions] = useState([]);
   const [knownRecipients, setKnownRecipients] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fetchRecipients = async () => {
+    if (!token) return;
+    
+    setIsLoading(true);
     try {
-      // ✅ CORRECT ENDPOINT - Using /mail/recipients
       const res = await fetch(`${API_BASE_URL}/mail/recipients`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -19,11 +22,20 @@ const RecipientInput = ({ recipient, onRecipientChange, token }) => {
       setKnownRecipients(data.recipients || []);
     } catch (err) {
       console.error("Error fetching recipients", err);
+      setKnownRecipients([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleFocus = () => {
+  useEffect(() => {
     if (token) {
+      fetchRecipients();
+    }
+  }, [token]);
+
+  const handleFocus = () => {
+    if (knownRecipients.length === 0 && token) {
       fetchRecipients();
     }
     setShowSuggestions(true);
@@ -33,11 +45,11 @@ const RecipientInput = ({ recipient, onRecipientChange, token }) => {
     const input = e.target.value;
     onRecipientChange(input);
 
-    if (input.trim()) {
+    if (input.trim() && knownRecipients.length > 0) {
       const filtered = knownRecipients.filter((email) =>
         email.toLowerCase().includes(input.toLowerCase())
       );
-      setSuggestions(filtered);
+      setSuggestions(filtered.slice(0, 5)); // Limit to 5 suggestions
     } else {
       setSuggestions([]);
     }
@@ -51,7 +63,17 @@ const RecipientInput = ({ recipient, onRecipientChange, token }) => {
 
   const handleBlur = () => {
     // Delay hiding suggestions to allow for clicks
-    setTimeout(() => setShowSuggestions(false), 150);
+    setTimeout(() => {
+      setShowSuggestions(false);
+      setSuggestions([]);
+    }, 200);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setSuggestions([]);
+    }
   };
 
   return (
@@ -60,12 +82,14 @@ const RecipientInput = ({ recipient, onRecipientChange, token }) => {
       <div style={{ position: "relative", flex: 1 }}>
         <input
           type="email"
-          placeholder="Recipients"
+          placeholder="Enter recipient email address"
           value={recipient}
           onFocus={handleFocus}
           onChange={handleInputChange}
           onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
           required
+          maxLength={100}
         />
         
         {showSuggestions && suggestions.length > 0 && (
@@ -74,11 +98,20 @@ const RecipientInput = ({ recipient, onRecipientChange, token }) => {
               <li
                 key={idx}
                 onClick={() => handleSuggestionClick(email)}
+                onMouseDown={(e) => e.preventDefault()} // Prevent blur when clicking
               >
                 {email}
               </li>
             ))}
           </ul>
+        )}
+        
+        {showSuggestions && isLoading && (
+          <div className="suggestions-dropdown">
+            <li style={{ color: '#9aa0a6', fontStyle: 'italic' }}>
+              Loading recipients...
+            </li>
+          </div>
         )}
       </div>
     </div>

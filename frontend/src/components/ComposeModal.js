@@ -19,6 +19,8 @@ const ComposeModal = ({
   const [attachment, setAttachment] = useState("");
   const [file, setFile] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // Load draft data if editing
   useEffect(() => {
@@ -45,7 +47,6 @@ const ComposeModal = ({
     formData.append("file", file);
 
     try {
-      // ✅ CORRECT ENDPOINT - Using /file/upload
       const res = await fetch(`${API_BASE_URL}/file/upload`, {
         method: "POST",
         headers: {
@@ -57,6 +58,7 @@ const ComposeModal = ({
       if (data.url) {
         setAttachment(data.url);
         toast.success("File uploaded successfully!");
+        setFile(null); // Clear file after successful upload
       } else {
         toast.error("Failed to upload file");
       }
@@ -72,8 +74,14 @@ const ComposeModal = ({
       return;
     }
 
+    if (!subject.trim() && !body.trim()) {
+      toast.error("Please enter a subject or message");
+      return;
+    }
+
+    setIsSending(true);
+
     try {
-      // ✅ CORRECT ENDPOINT - Using /mail/send
       const res = await fetch(`${API_BASE_URL}/mail/send`, {
         method: "POST",
         headers: { 
@@ -81,9 +89,9 @@ const ComposeModal = ({
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          to: recipient,
-          subject,
-          body,
+          to: recipient.trim(),
+          subject: subject.trim(),
+          body: body.trim(),
           attachment,
         }),
       });
@@ -106,12 +114,20 @@ const ComposeModal = ({
     } catch (err) {
       console.error("Send error:", err);
       toast.error("An error occurred while sending the email.");
+    } finally {
+      setIsSending(false);
     }
   };
 
   const handleSaveDraft = async () => {
+    if (!recipient.trim() && !subject.trim() && !body.trim()) {
+      toast.error("Please enter some content to save as draft");
+      return;
+    }
+
+    setIsSavingDraft(true);
+
     try {
-      // ✅ CORRECT ENDPOINT - Using /mail/save_draft
       const res = await fetch(`${API_BASE_URL}/mail/save_draft`, {
         method: "POST",
         headers: { 
@@ -119,9 +135,9 @@ const ComposeModal = ({
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          to: recipient,
-          subject,
-          body,
+          to: recipient.trim(),
+          subject: subject.trim(),
+          body: body.trim(),
           attachment,
         }),
       });
@@ -138,12 +154,13 @@ const ComposeModal = ({
     } catch (err) {
       console.error("Error saving draft:", err);
       toast.error("Error saving draft");
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
   const handleDeleteDraft = async (draft) => {
     try {
-      // ✅ CORRECT ENDPOINT - Using /mail/delete_draft
       const res = await fetch(`${API_BASE_URL}/mail/delete_draft`, {
         method: "POST",
         headers: { 
@@ -160,8 +177,11 @@ const ComposeModal = ({
   };
 
   const handleUseTemplate = (template) => {
-    setSubject(template.subject);
-    setBody(template.body);
+    if (template) {
+      setSubject(template.subject || "");
+      setBody(template.body || "");
+      toast.success(`Template "${template.name}" applied`);
+    }
   };
 
   const handleScheduleEmail = async (scheduleDate, scheduleTime) => {
@@ -184,7 +204,6 @@ const ComposeModal = ({
     }
     
     try {
-      // ✅ CORRECT ENDPOINT - Using /mail/schedule
       const res = await fetch(`${API_BASE_URL}/mail/schedule`, {
         method: "POST",
         headers: { 
@@ -192,9 +211,9 @@ const ComposeModal = ({
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          to: recipient,
-          subject,
-          body,
+          to: recipient.trim(),
+          subject: subject.trim(),
+          body: body.trim(),
           attachment,
           scheduleTime: scheduledDateTime.toISOString(),
         }),
@@ -216,12 +235,35 @@ const ComposeModal = ({
     }
   };
 
+  const handleClose = () => {
+    if (recipient.trim() || subject.trim() || body.trim()) {
+      if (window.confirm("Are you sure you want to discard this email?")) {
+        resetForm();
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      // Check file size (limit to 10MB)
+      if (selectedFile.size > 10 * 1024 * 1024) {
+        toast.error("File size must be less than 10MB");
+        return;
+      }
+      setFile(selectedFile);
+    }
+  };
+
   return (
     <div className="compose-overlay">
       <div className="compose-modal">
         <div className="compose-header">
           <h3>{editingDraft ? "Edit Draft" : "New Message"}</h3>
-          <button className="close-btn" onClick={onClose}>
+          <button className="close-btn" onClick={handleClose}>
             ✕
           </button>
         </div>
@@ -240,15 +282,17 @@ const ComposeModal = ({
               placeholder="Subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
+              maxLength={200}
             />
           </div>
 
           <div className="form-row message-row">
+            <label>Message</label>
             <textarea
               placeholder="Compose your message..."
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              rows="12"
+              maxLength={5000}
             />
           </div>
 
@@ -257,19 +301,29 @@ const ComposeModal = ({
               type="file"
               id="file-input"
               style={{ display: "none" }}
-              onChange={(e) => setFile(e.target.files[0])}
+              onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
             />
             <label htmlFor="file-input" className="attach-btn">
               📎 Attach files
             </label>
+            
             {file && (
               <div className="file-selected">
-                <span>{file.name}</span>
+                <span>{file.name} ({Math.round(file.size / 1024)} KB)</span>
                 <button onClick={handleFileUpload} className="upload-btn">
                   Upload
                 </button>
+                <button 
+                  onClick={() => setFile(null)} 
+                  className="upload-btn"
+                  style={{ background: '#dc3545', marginLeft: '8px' }}
+                >
+                  Remove
+                </button>
               </div>
             )}
+            
             {attachment && (
               <div className="attachment-preview">
                 <span className="attachment-icon">📎</span>
@@ -280,51 +334,74 @@ const ComposeModal = ({
                 >
                   {attachment.split("/").pop()}
                 </a>
+                <button 
+                  onClick={() => setAttachment("")}
+                  style={{ 
+                    marginLeft: '12px', 
+                    background: 'none', 
+                    border: 'none', 
+                    color: '#dc3545',
+                    cursor: 'pointer',
+                    fontSize: '16px'
+                  }}
+                >
+                  ✕
+                </button>
               </div>
             )}
           </div>
 
-          <div className="template-selection">
-            <label>Use Template:</label>
-            <select
-              onChange={(e) => {
-                const template = templates.find(
-                  (t) => t.name === e.target.value
-                );
-                if (template) handleUseTemplate(template);
-              }}
-            >
-              <option value="">Select a template...</option>
-              {templates.map((template, index) => (
-                <option key={index} value={template.name}>
-                  {template.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {templates && templates.length > 0 && (
+            <div className="template-selection">
+              <label>Use Template:</label>
+              <select
+                onChange={(e) => {
+                  const template = templates.find(
+                    (t) => t.name === e.target.value
+                  );
+                  if (template) {
+                    handleUseTemplate(template);
+                    e.target.value = ""; // Reset select
+                  }
+                }}
+                defaultValue=""
+              >
+                <option value="">Select a template...</option>
+                {templates.map((template, index) => (
+                  <option key={index} value={template.name}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="compose-actions">
             <button
               className="btn primary"
               onClick={handleSend}
-              disabled={!recipient.trim()}
+              disabled={!recipient.trim() || isSending}
             >
-              Send
+              {isSending ? "Sending..." : "Send"}
             </button>
 
             <button
               className="btn secondary"
               onClick={() => setShowScheduleModal(true)}
-              disabled={!recipient.trim()}
+              disabled={!recipient.trim() || isSending}
             >
               Schedule & Send
             </button>
 
-            <button className="btn outline" onClick={handleSaveDraft}>
-              Save Draft
+            <button 
+              className="btn outline" 
+              onClick={handleSaveDraft}
+              disabled={isSavingDraft}
+            >
+              {isSavingDraft ? "Saving..." : "Save Draft"}
             </button>
 
-            <button className="btn muted" onClick={onClose}>
+            <button className="btn muted" onClick={handleClose}>
               Discard
             </button>
           </div>
