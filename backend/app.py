@@ -68,31 +68,142 @@ def verify_dependencies():
         print("✅ All dependencies verified")
         return True
 
-def register_blueprints_safely(app):
-    """Register blueprints with error handling"""
-    blueprints = [
-        ('routes.auth_routes', 'auth_bp', '/auth'),
-        ('routes.mail_routes', 'mail_bp', '/mail'),
-        ('routes.file_routes', 'file_bp', '/file'),
-        ('routes.template_routes', 'template_bp', '/template'),
-        ('routes.company_routes', 'company_bp', '/company'),
-        ('routes.service_routes', 'service_bp', '/service'),
-        ('routes.encrypted_service_routes', 'encrypted_service_bp', '/api/v1/encrypted')
+def register_blueprints_with_detailed_logging(app):
+    """Register blueprints with detailed error handling and logging"""
+    print("\n🔧 Registering blueprints...")
+    
+    blueprints_config = [
+        {
+            'module': 'routes.auth_routes',
+            'blueprint': 'auth_bp',
+            'url_prefix': '/auth',
+            'name': 'Authentication'
+        },
+        {
+            'module': 'routes.mail_routes',
+            'blueprint': 'mail_bp',
+            'url_prefix': '/mail',
+            'name': 'Mail Operations'
+        },
+        {
+            'module': 'routes.file_routes',
+            'blueprint': 'file_bp',
+            'url_prefix': '/file',
+            'name': 'File Operations'
+        },
+        {
+            'module': 'routes.template_routes',
+            'blueprint': 'template_bp',
+            'url_prefix': '/template',
+            'name': 'Templates'
+        },
+        {
+            'module': 'routes.company_routes',
+            'blueprint': 'company_bp',
+            'url_prefix': '/company',
+            'name': 'Company Management'
+        },
+        {
+            'module': 'routes.service_routes',
+            'blueprint': 'service_bp',
+            'url_prefix': '/service',
+            'name': 'Service API'
+        },
+        {
+            'module': 'routes.encrypted_service_routes',
+            'blueprint': 'encrypted_service_bp',
+            'url_prefix': '/api/v1/encrypted',
+            'name': 'Encrypted Service API'
+        }
     ]
     
     registered_count = 0
-    for module_name, blueprint_name, url_prefix in blueprints:
-        try:
-            module = __import__(module_name, fromlist=[blueprint_name])
-            blueprint = getattr(module, blueprint_name)
-            app.register_blueprint(blueprint, url_prefix=url_prefix)
-            print(f"✓ Registered {blueprint_name} at {url_prefix}")
-            registered_count += 1
-        except Exception as e:
-            print(f"✗ Failed to register {blueprint_name}: {e}")
+    failed_blueprints = []
     
-    print(f"📦 Registered {registered_count}/{len(blueprints)} blueprints")
+    for bp_config in blueprints_config:
+        try:
+            print(f"\n📦 Loading {bp_config['name']}...")
+            print(f"   Module: {bp_config['module']}")
+            print(f"   Blueprint: {bp_config['blueprint']}")
+            print(f"   URL Prefix: {bp_config['url_prefix']}")
+            
+            # Import the module
+            module = __import__(bp_config['module'], fromlist=[bp_config['blueprint']])
+            
+            # Get the blueprint
+            blueprint = getattr(module, bp_config['blueprint'])
+            
+            if blueprint is None:
+                print(f"   ❌ Blueprint {bp_config['blueprint']} is None")
+                failed_blueprints.append(bp_config['name'])
+                continue
+            
+            # Register the blueprint
+            app.register_blueprint(blueprint, url_prefix=bp_config['url_prefix'])
+            
+            print(f"   ✅ Successfully registered {bp_config['name']}")
+            registered_count += 1
+            
+        except ImportError as e:
+            print(f"   ❌ Import error for {bp_config['name']}: {e}")
+            failed_blueprints.append(bp_config['name'])
+        except AttributeError as e:
+            print(f"   ❌ Attribute error for {bp_config['name']}: {e}")
+            failed_blueprints.append(bp_config['name'])
+        except Exception as e:
+            print(f"   ❌ Unexpected error for {bp_config['name']}: {e}")
+            failed_blueprints.append(bp_config['name'])
+    
+    print(f"\n📊 Blueprint Registration Summary:")
+    print(f"   Successfully registered: {registered_count}/{len(blueprints_config)}")
+    print(f"   Failed: {len(failed_blueprints)}")
+    
+    if failed_blueprints:
+        print(f"   Failed blueprints: {', '.join(failed_blueprints)}")
+    
     return registered_count > 0
+
+def print_all_routes(app):
+    """Print all registered routes for debugging"""
+    print("\n🗺️  All registered routes:")
+    print("=" * 80)
+    
+    routes = []
+    for rule in app.url_map.iter_rules():
+        routes.append({
+            'path': rule.rule,
+            'methods': sorted([m for m in rule.methods if m not in ['HEAD', 'OPTIONS']]),
+            'endpoint': rule.endpoint
+        })
+    
+    # Sort by path
+    routes.sort(key=lambda x: x['path'])
+    
+    for route in routes:
+        methods_str = ', '.join(route['methods'])
+        print(f"  {route['path']:<40} | {methods_str:<15} | {route['endpoint']}")
+    
+    print(f"\n📊 Total routes: {len(routes)}")
+    
+    # Check specifically for auth routes
+    auth_routes = [r for r in routes if '/auth' in r['path']]
+    if auth_routes:
+        print(f"\n🔐 Auth routes ({len(auth_routes)}):")
+        for route in auth_routes:
+            methods_str = ', '.join(route['methods'])
+            print(f"  ✓ {route['path']:<35} | {methods_str}")
+    else:
+        print("\n❌ No auth routes found!")
+    
+    # Specifically check for the register endpoint
+    register_route = next((r for r in routes if r['path'] == '/auth/register'), None)
+    if register_route:
+        if 'POST' in register_route['methods']:
+            print(f"\n✅ /auth/register POST route is available!")
+        else:
+            print(f"\n❌ /auth/register exists but POST not allowed. Methods: {register_route['methods']}")
+    else:
+        print("\n❌ /auth/register route NOT FOUND!")
 
 def setup_security_headers(app):
     """Setup security headers for all responses"""
@@ -190,9 +301,17 @@ def init_app():
     print("✅ Application initialized successfully")
     return True
 
-# Register blueprints safely
-if not register_blueprints_safely(app):
+# Initialize the app
+if not init_app():
+    print("❌ Failed to initialize application")
+    sys.exit(1)
+
+# Register blueprints with detailed logging
+if not register_blueprints_with_detailed_logging(app):
     print("⚠️  Warning: Some blueprints failed to register")
+
+# Print all routes after registration for debugging
+print_all_routes(app)
 
 # Root routes for serving frontend
 @app.route('/')
@@ -385,14 +504,9 @@ def cleanup():
 atexit.register(cleanup)
 signal.signal(signal.SIGTERM, lambda s, f: cleanup())
 
-# Initialize the app
-if not init_app():
-    print("❌ Failed to initialize application")
-    sys.exit(1)
-
 # Run the server
 if __name__ == '__main__':
-    print("🚀 Starting Mail-as-a-Service Backend...")
+    print("\n🚀 Starting Mail-as-a-Service Backend...")
     print(f"📧 Supported domains: {len(SUPPORTED_SERVICES)}")
     print(f"🔐 API configured: {'Yes' if API_KEY else 'No'}")
     print(f"💾 Data directory: {DATA_DIR}")
