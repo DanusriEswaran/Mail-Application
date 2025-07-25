@@ -16,5 +16,25 @@
   "danu@gmail.com": {
     "username": "danu",
     "password": "gAAAAABoYjbDq2v7mzOmz1HVGP47Vd3cSickC0__nNxaWgfE8pUhWoVFW3QCiwEt24yWKJvyFw_TJNbYzuLyhEBsw6lidXH6dQ=="
+  },
+  "bheem@gmail.com": {
+    "user_id": "3fa10f8ec5a117f9",
+    "username": "bheem",
+    "password": "gAAAAABogfqDAkMttwiXc2hwFIDY0yrxnvNeYsS21bYDyLjbxGsR5BZpCQsOhnmQOvUWLzI3Esi_D6LlmJ73d8UKFzDi0BCOPg==",
+    "email": "bheem@gmail.com",
+    "status": "active",
+    "created_at": "2025-07-24T14:48:59.945252",
+    "last_login": "2025-07-24T14:49:06.346964",
+    "login_count": 2
+  },
+  "nayaa@gmail.com": {
+    "user_id": "05de6f80b25cdd6a",
+    "username": "nayaa",
+    "password": "gAAAAABoghOnZ62Y2ICYdbIhb-SsSUoDc2LlSKNYodO3U9z-5ouFptbBUaPb9N2KCu19ww5neKPxo4l-ZCnhI-cKzJbyC-s7tQ==",
+    "email": "nayaa@gmail.com",
+    "status": "active",
+    "created_at": "2025-07-24T16:36:15.367191",
+    "last_login": "2025-07-24T16:56:40.004834",
+    "login_count": 4
   }
 }
