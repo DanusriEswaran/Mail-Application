@@ -1,6 +1,8 @@
 import json
 import hashlib
 import re
+import secrets
+import string
 from config import USERS_FILE, SUPPORTED_SERVICES
 from utils.encryption import Encryption
 from datetime import datetime
@@ -65,6 +67,12 @@ def validate_password(password):
         return False, "Password must contain at least one number"
     
     return True, password
+
+def generate_client_secret(length=32):
+    """Generate a cryptographically secure client secret"""
+    # Use a mix of letters, numbers, and special characters
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*()_+-=[]{}|;:,.<>?"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 def generate_user_id(username, password):
     """Generate a user ID based on username and password"""
@@ -153,7 +161,7 @@ def is_supported_email(email):
         return False
 
 def register_user(username, email, password):
-    """Register a new user with comprehensive validation"""
+    """Register a new user with comprehensive validation and client secret generation"""
     try:
         # Validate inputs
         valid, clean_username = validate_username(username)
@@ -190,12 +198,19 @@ def register_user(username, email, password):
         # Generate user ID
         user_id = generate_user_id(email, password)
         
-        # Add new user
+        # Generate client secret for this user
+        client_secret = generate_client_secret(32)
+        
+        # Encrypt the client secret for storage
+        encrypted_client_secret = encryption.encrypt(client_secret)
+        
+        # Add new user with client secret
         users[email] = {
             "user_id": user_id,
             "username": username,
             "password": encrypted_password,
             "email": email,
+            "client_secret": encrypted_client_secret,  # Store encrypted client secret
             "status": "active",
             "created_at": datetime.now().isoformat(),
             "last_login": None,
@@ -227,6 +242,7 @@ def register_user(username, email, password):
             "user_id": user_id,
             "username": username,
             "email": email,
+            "client_secret": client_secret,  # Return plain client secret for initial setup
             "status": "active",
             "created_at": users[email]["created_at"]
         }, None
@@ -236,7 +252,7 @@ def register_user(username, email, password):
         return None, f"Registration failed: {str(e)}"
 
 def authenticate_user(email, password):
-    """Authenticate a user with enhanced security"""
+    """Authenticate a user with enhanced security and return client secret"""
     try:
         # Validate inputs
         if not email or not password:
@@ -279,10 +295,30 @@ def authenticate_user(email, password):
                 
                 user_id = user_data.get('user_id') or generate_user_id(email, password)
                 
+                # Decrypt client secret for return
+                client_secret = None
+                if 'client_secret' in user_data:
+                    try:
+                        client_secret = encryption.decrypt(user_data['client_secret'])
+                    except Exception as e:
+                        print(f"Warning: Failed to decrypt client secret for {email}: {e}")
+                        # Generate new client secret if decryption fails
+                        client_secret = generate_client_secret(32)
+                        encrypted_client_secret = encryption.encrypt(client_secret)
+                        users[email]['client_secret'] = encrypted_client_secret
+                        save_users(users)
+                else:
+                    # Generate client secret for existing users who don't have one
+                    client_secret = generate_client_secret(32)
+                    encrypted_client_secret = encryption.encrypt(client_secret)
+                    users[email]['client_secret'] = encrypted_client_secret
+                    save_users(users)
+                
                 return {
                     "user_id": user_id,
                     "email": email,
                     "username": user_data['username'],
+                    "client_secret": client_secret,  # Include client secret in response
                     "status": user_data.get('status', 'active'),
                     "last_login": users[email]['last_login']
                 }, None
@@ -296,6 +332,50 @@ def authenticate_user(email, password):
     except Exception as e:
         print(f"Error authenticating user: {e}")
         return None, f"Authentication failed: {str(e)}"
+
+def get_client_secret(email):
+    """Get client secret for a user"""
+    try:
+        if not email:
+            return None
+            
+        valid, clean_email = validate_email_format(email)
+        if not valid:
+            return None
+            
+        email = clean_email
+        users = load_users()
+        
+        if email not in users:
+            return None
+            
+        user_data = users[email]
+        
+        if 'client_secret' not in user_data:
+            # Generate client secret for users who don't have one
+            client_secret = generate_client_secret(32)
+            encryption = Encryption()
+            encrypted_client_secret = encryption.encrypt(client_secret)
+            users[email]['client_secret'] = encrypted_client_secret
+            save_users(users)
+            return client_secret
+        
+        # Decrypt existing client secret
+        encryption = Encryption()
+        try:
+            return encryption.decrypt(user_data['client_secret'])
+        except Exception as e:
+            print(f"Error decrypting client secret for {email}: {e}")
+            # Generate new client secret if decryption fails
+            client_secret = generate_client_secret(32)
+            encrypted_client_secret = encryption.encrypt(client_secret)
+            users[email]['client_secret'] = encrypted_client_secret
+            save_users(users)
+            return client_secret
+            
+    except Exception as e:
+        print(f"Error getting client secret: {e}")
+        return None
 
 def update_user_last_login(email):
     """Update user's last login timestamp"""
@@ -339,7 +419,8 @@ def get_users_by_domain(domain):
                     'status': user_data.get('status', 'active'),
                     'created_at': user_data.get('created_at'),
                     'last_login': user_data.get('last_login'),
-                    'login_count': user_data.get('login_count', 0)
+                    'login_count': user_data.get('login_count', 0),
+                    'has_client_secret': 'client_secret' in user_data
                 })
         
         return domain_users
@@ -356,6 +437,7 @@ def get_user_stats():
         total_users = len(users)
         active_users = len([u for u in users.values() if u.get('status') == 'active'])
         inactive_users = total_users - active_users
+        users_with_secrets = len([u for u in users.values() if 'client_secret' in u])
         
         # Calculate users with recent activity (last 30 days)
         from datetime import datetime, timedelta
@@ -376,12 +458,19 @@ def get_user_stats():
             'total_users': total_users,
             'active_users': active_users,
             'inactive_users': inactive_users,
-            'recent_active_users': recent_active
+            'recent_active_users': recent_active,
+            'users_with_client_secrets': users_with_secrets
         }
         
     except Exception as e:
         print(f"Error getting user stats: {str(e)}")
-        return {'total_users': 0, 'active_users': 0, 'inactive_users': 0, 'recent_active_users': 0}
+        return {
+            'total_users': 0, 
+            'active_users': 0, 
+            'inactive_users': 0, 
+            'recent_active_users': 0,
+            'users_with_client_secrets': 0
+        }
 
 def update_user_status(email, status):
     """Update user status"""
@@ -436,7 +525,8 @@ def get_user_by_email(email):
             'created_at': user_data.get('created_at'),
             'last_login': user_data.get('last_login'),
             'login_count': user_data.get('login_count', 0),
-            'updated_at': user_data.get('updated_at')
+            'updated_at': user_data.get('updated_at'),
+            'has_client_secret': 'client_secret' in user_data
         }
         
     except Exception as e:

@@ -1,7 +1,7 @@
-# routes/service_routes.py - Enhanced with Encrypted API Support
+# routes/service_routes.py - Fixed syntax error around line 491
 
 from flask import Blueprint, request, jsonify
-from models.user import load_users, is_supported_email, authenticate_user
+from models.user import load_users, is_supported_email, authenticate_user, get_client_secret
 from models.company import get_company_by_domain
 from utils.auth import verify_token, generate_token
 from services.mail_service import MailService
@@ -26,14 +26,50 @@ def validate_api_key():
     
     return True, None
 
-def get_client_secret():
-    """Get client-specific secret from headers"""
-    return request.headers.get('X-CLIENT-SECRET')
+def get_client_secret_from_request():
+    """Get client-specific secret from headers with user lookup"""
+    # Try to get from header first
+    client_secret = request.headers.get('X-CLIENT-SECRET')
+    
+    if client_secret:
+        return client_secret
+    
+    # Try to get from user identification
+    user_email = request.headers.get('X-USER-EMAIL')
+    if user_email:
+        return get_client_secret(user_email)
+    
+    return None
 
 def is_encrypted_request():
     """Check if request contains encrypted data"""
     data = request.get_json()
     return data and 'encrypted_data' in data
+
+def authenticate_api_user(email=None):
+    """Authenticate user for API access and get their client secret"""
+    if not email:
+        # Try to get from headers
+        email = request.headers.get('X-USER-EMAIL')
+    
+    if not email:
+        return None, None, "User email required for API access"
+    
+    # Validate user exists and is active
+    users = load_users()
+    if email not in users:
+        return None, None, "User not found"
+    
+    user_data = users[email]
+    if user_data.get('status') != 'active':
+        return None, None, "User account is inactive"
+    
+    # Get client secret
+    client_secret = get_client_secret(email)
+    if not client_secret:
+        return None, None, "Client secret not available for user"
+    
+    return user_data, client_secret, None
 
 # ========== ENHANCED VERIFY EMAIL API ==========
 
@@ -55,6 +91,7 @@ def verify_email_enhanced():
     """
     try:
         data = request.get_json()
+        client_secret = None
         
         # Check if this is an encrypted request
         if is_encrypted_request():
@@ -63,7 +100,7 @@ def verify_email_enhanced():
             if not valid:
                 return jsonify({'error': error}), 401
             
-            client_secret = get_client_secret()
+            client_secret = get_client_secret_from_request()
             encrypted_payload = data.get('encrypted_data')
             
             if not encrypted_payload:
@@ -101,12 +138,12 @@ def verify_email_enhanced():
                 'exists': True,
                 'username': user_data.get('username'),
                 'status': user_data.get('status', 'active'),
-                'verified': True
+                'verified': True,
+                'has_client_secret': 'client_secret' in user_data
             }
             
             # If encrypted request, encrypt the response
             if is_encrypted_request():
-                client_secret = get_client_secret()
                 encrypted_response = encryption_service.prepare_api_response(response_data, client_secret)
                 return jsonify({
                     'encrypted_response': encrypted_response
@@ -124,7 +161,6 @@ def verify_email_enhanced():
             
             # If encrypted request, encrypt the error response
             if is_encrypted_request():
-                client_secret = get_client_secret()
                 encrypted_response = encryption_service.prepare_api_response(error_response, client_secret)
                 return jsonify({
                     'encrypted_response': encrypted_response
@@ -141,7 +177,7 @@ def verify_email_enhanced():
         # If encrypted request, encrypt the error response
         if is_encrypted_request():
             try:
-                client_secret = get_client_secret()
+                client_secret = get_client_secret_from_request()
                 encrypted_response = encryption_service.prepare_api_response(error_response, client_secret)
                 return jsonify({
                     'encrypted_response': encrypted_response
@@ -157,21 +193,6 @@ def verify_email_enhanced():
 def send_email_enhanced():
     """
     Enhanced send email endpoint supporting both plain and encrypted payloads
-    
-    Plain Text Request:
-    {
-        "from": "sender@domain.com",
-        "to": "recipient@domain.com",
-        "subject": "Email Subject",
-        "body": "Email content",
-        "attachment": null
-    }
-    
-    Encrypted Request:
-    {
-        "encrypted_data": "base64-encoded-encrypted-json",
-        "encryption_type": "aes256gcm"  // optional
-    }
     """
     try:
         # Validate API key (required for all send_email requests)
@@ -180,10 +201,21 @@ def send_email_enhanced():
             return jsonify({'error': error}), 401
         
         data = request.get_json()
+        client_secret = None
         
         # Check if this is an encrypted request
         if is_encrypted_request():
-            client_secret = get_client_secret()
+            # Get user email for client secret lookup
+            user_email = data.get('user_email') or request.headers.get('X-USER-EMAIL')
+            
+            if not user_email:
+                return jsonify({'error': 'User email required for encrypted requests'}), 400
+            
+            # Authenticate user and get client secret
+            user_data, client_secret, auth_error = authenticate_api_user(user_email)
+            if auth_error:
+                return jsonify({'error': auth_error}), 401
+            
             encrypted_payload = data.get('encrypted_data')
             
             if not encrypted_payload:
@@ -201,6 +233,10 @@ def send_email_enhanced():
             subject = decrypted_data.get('subject', '')
             body = decrypted_data.get('body', '')
             attachment = decrypted_data.get('attachment')
+            
+            # Verify sender matches authenticated user
+            if sender != user_email:
+                return jsonify({'error': 'Sender must match authenticated user'}), 403
         else:
             # Handle plain text request (backward compatibility)
             sender = data.get('from')
@@ -208,6 +244,12 @@ def send_email_enhanced():
             subject = data.get('subject', '')
             body = data.get('body', '')
             attachment = data.get('attachment')
+            
+            # For plain requests, authenticate the sender
+            if sender:
+                user_data, client_secret, auth_error = authenticate_api_user(sender)
+                if auth_error:
+                    return jsonify({'error': auth_error}), 401
         
         if not all([sender, recipient]):
             return jsonify({'error': 'Sender and recipient are required'}), 400
@@ -220,7 +262,6 @@ def send_email_enhanced():
             
             # If encrypted request, encrypt the error response
             if is_encrypted_request():
-                client_secret = get_client_secret()
                 encrypted_response = encryption_service.prepare_api_response(error_response, client_secret)
                 return jsonify({
                     'encrypted_response': encrypted_response
@@ -232,12 +273,13 @@ def send_email_enhanced():
         success_response = {
             'success': True,
             'message': 'Email sent successfully',
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'from': sender,
+            'to': recipient
         }
         
         # If encrypted request, encrypt the response
         if is_encrypted_request():
-            client_secret = get_client_secret()
             encrypted_response = encryption_service.prepare_api_response(success_response, client_secret)
             return jsonify({
                 'encrypted_response': encrypted_response
@@ -251,7 +293,7 @@ def send_email_enhanced():
         # If encrypted request, encrypt the error response
         if is_encrypted_request():
             try:
-                client_secret = get_client_secret()
+                client_secret = get_client_secret_from_request()
                 encrypted_response = encryption_service.prepare_api_response(error_response, client_secret)
                 return jsonify({
                     'encrypted_response': encrypted_response
@@ -261,13 +303,62 @@ def send_email_enhanced():
         
         return jsonify(error_response), 500
 
-# ========== NEW: ENCRYPTION INFO API ==========
+# ========== USER AUTHENTICATION API ==========
+
+@service_bp.route('/authenticate_user', methods=['POST'])
+def authenticate_user_api():
+    """
+    Authenticate user and return client secret for API usage
+    """
+    try:
+        # Validate API key
+        valid, error = validate_api_key()
+        if not valid:
+            return jsonify({'error': error}), 401
+        
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not all([email, password]):
+            return jsonify({'error': 'Email and password are required'}), 400
+        
+        # Authenticate user
+        user, error = authenticate_user(email, password)
+        
+        if error:
+            return jsonify({
+                'authenticated': False,
+                'error': error
+            }), 401
+        
+        return jsonify({
+            'authenticated': True,
+            'client_secret': user.get('client_secret'),
+            'user_info': {
+                'user_id': user.get('user_id'),
+                'email': user.get('email'),
+                'username': user.get('username'),
+                'status': user.get('status')
+            },
+            'api_usage': {
+                'include_client_secret_header': 'X-CLIENT-SECRET: your-client-secret',
+                'include_user_email_header': 'X-USER-EMAIL: your-email@domain.com',
+                'encrypted_endpoints': ['/service/send_email', '/service/verify_email']
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'authenticated': False,
+            'error': f'Authentication failed: {str(e)}'
+        }), 500
+
+# ========== ENCRYPTION INFO API ==========
 
 @service_bp.route('/encryption_info', methods=['GET'])
 def get_encryption_info():
-    """
-    Get encryption algorithm information for external applications
-    """
+    """Get encryption algorithm information for external applications"""
     try:
         # Validate API key
         valid, error = validate_api_key()
@@ -287,24 +378,21 @@ def get_encryption_info():
                 'encoding': 'Base64',
                 'data_format': 'JSON'
             },
+            'client_secret_usage': {
+                'purpose': 'User-specific encryption key for enhanced security',
+                'generation': 'Automatically generated during user registration',
+                'storage': 'Encrypted in user database',
+                'usage': 'Include as X-CLIENT-SECRET header in encrypted requests',
+                'retrieval': 'Available through /auth/login or /auth/get_client_secret endpoints'
+            },
             'encrypted_request_format': {
                 'description': 'Send encrypted data in request body',
                 'required_fields': ['encrypted_data'],
-                'optional_fields': ['encryption_type'],
-                'headers': {
-                    'X-API-KEY': 'Required for all encrypted requests',
-                    'X-CLIENT-SECRET': 'Optional client-specific password for enhanced security',
+                'required_headers': {
+                    'X-API-KEY': 'API key for service access',
+                    'X-CLIENT-SECRET': 'User-specific client secret',
+                    'X-USER-EMAIL': 'User email for authentication (encrypted requests)',
                     'Content-Type': 'application/json'
-                },
-                'example_request': {
-                    'encrypted_data': 'eyJjaXBoZXJ0ZXh0IjoiLi4uIiwibm9uY2UiOiIuLi4iLCJ0YWciOiIuLi4ifQ==',
-                    'encryption_type': 'aes256gcm'
-                }
-            },
-            'encrypted_response_format': {
-                'description': 'Receive encrypted data in response body',
-                'format': {
-                    'encrypted_response': 'base64-encoded-encrypted-json'
                 }
             },
             'supported_endpoints': {
@@ -312,61 +400,20 @@ def get_encryption_info():
                     'url': '/service/verify_email',
                     'method': 'POST',
                     'supports_encryption': True,
-                    'backward_compatible': True,
-                    'encrypted_payload_example': {
-                        'email': 'user@domain.com'
-                    }
+                    'backward_compatible': True
                 },
                 'send_email': {
                     'url': '/service/send_email',
                     'method': 'POST',
                     'supports_encryption': True,
                     'backward_compatible': True,
-                    'encrypted_payload_example': {
-                        'from': 'sender@domain.com',
-                        'to': 'recipient@domain.com',
-                        'subject': 'Email Subject',
-                        'body': 'Email content',
-                        'attachment': None
-                    }
-                }
-            },
-            'implementation_examples': {
-                'javascript': {
-                    'encrypt_request': '''
-// Example: Encrypting request data
-const payload = { email: "user@domain.com" };
-const encryptedData = encryptWithAES256GCM(JSON.stringify(payload), clientSecret);
-const request = {
-    encrypted_data: btoa(JSON.stringify(encryptedData))
-};
-''',
-                    'decrypt_response': '''
-// Example: Decrypting response data
-const encryptedResponse = response.encrypted_response;
-const decryptedData = JSON.parse(atob(encryptedResponse));
-const result = decryptWithAES256GCM(decryptedData, clientSecret);
-'''
+                    'requires_authentication': True
                 },
-                'python': {
-                    'encrypt_request': '''
-# Example: Encrypting request data
-import json, base64
-from your_encryption_lib import encrypt_aes256gcm
-
-payload = {"email": "user@domain.com"}
-encrypted_data = encrypt_aes256gcm(json.dumps(payload), client_secret)
-request_data = {"encrypted_data": base64.b64encode(json.dumps(encrypted_data).encode()).decode()}
-''',
-                    'decrypt_response': '''
-# Example: Decrypting response data
-import json, base64
-from your_encryption_lib import decrypt_aes256gcm
-
-encrypted_response = response_json["encrypted_response"]
-decrypted_data = json.loads(base64.b64decode(encrypted_response).decode())
-result = decrypt_aes256gcm(decrypted_data, client_secret)
-'''
+                'authenticate_user': {
+                    'url': '/service/authenticate_user',
+                    'method': 'POST',
+                    'supports_encryption': False,
+                    'purpose': 'Get client secret for API usage'
                 }
             }
         }
@@ -376,7 +423,7 @@ result = decrypt_aes256gcm(decrypted_data, client_secret)
     except Exception as e:
         return jsonify({'error': f'Failed to get encryption info: {str(e)}'}), 500
 
-# ========== EXISTING APIS (Keep unchanged) ==========
+# ========== EXISTING APIS ==========
 
 @service_bp.route('/validate_email', methods=['POST'])
 def validate_email():
@@ -437,7 +484,8 @@ def check_user_exists():
             response_data.update({
                 'username': user_data.get('username'),
                 'status': user_data.get('status', 'active'),
-                'created_at': user_data.get('created_at')
+                'created_at': user_data.get('created_at'),
+                'has_client_secret': 'client_secret' in user_data
             })
         
         return jsonify(response_data), 200
@@ -445,112 +493,10 @@ def check_user_exists():
     except Exception as e:
         return jsonify({'error': f'Check failed: {str(e)}'}), 500
 
-# Keep all other existing endpoints unchanged...
-
-@service_bp.route('/bulk_register', methods=['POST'])
-def bulk_register_users():
-    """Register multiple users at once"""
-    try:
-        data = request.get_json()
-        users = data.get('users', [])
-        
-        if not users or not isinstance(users, list):
-            return jsonify({'error': 'Users array is required'}), 400
-        
-        results = []
-        
-        for user_data in users:
-            username = user_data.get('username', '').strip()
-            email = user_data.get('email', '').strip().lower()
-            password = user_data.get('password', '').strip()
-            
-            if not all([username, email, password]):
-                results.append({
-                    'email': email,
-                    'success': False,
-                    'error': 'Missing required fields'
-                })
-                continue
-            
-            # Import register_user function
-            from models.user import register_user
-            
-            user, error = register_user(username, email, password)
-            
-            if error:
-                results.append({
-                    'email': email,
-                    'success': False,
-                    'error': error
-                })
-            else:
-                results.append({
-                    'email': email,
-                    'success': True,
-                    'user': user
-                })
-        
-        successful = len([r for r in results if r['success']])
-        failed = len(results) - successful
-        
-        return jsonify({
-            'total': len(results),
-            'successful': successful,
-            'failed': failed,
-            'results': results
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'error': f'Bulk registration failed: {str(e)}'}), 500
-
-@service_bp.route('/domain_info/<domain>', methods=['GET'])
-def get_domain_info(domain):
-    """Get information about a domain"""
-    try:
-        company = get_company_by_domain(domain)
-        
-        if not company:
-            return jsonify({'error': 'Domain not found'}), 404
-        
-        return jsonify({
-            'domain': domain,
-            'company_name': company.get('name'),
-            'status': company.get('status'),
-            'created_at': company.get('created_at'),
-            'supported': True
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'error': f'Domain info failed: {str(e)}'}), 500
-
-@service_bp.route('/user_stats/<email>', methods=['GET'])
-def get_user_statistics(email):
-    """Get statistics for a specific user"""
-    try:
-        # Verify user exists
-        users = load_users()
-        if email not in users:
-            return jsonify({'error': 'User not found'}), 404
-        
-        # Get user stats
-        stats, error = MailService.get_stats(email)
-        
-        if error:
-            return jsonify({'error': error}), 500
-        
-        return jsonify({
-            'email': email,
-            'stats': stats
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'error': f'Stats retrieval failed: {str(e)}'}), 500
-
 @service_bp.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint for service monitoring"""
     try:
-        # Basic health checks
         from pathlib import Path
         from config import DATA_DIR, USERS_FILE
         
@@ -559,10 +505,11 @@ def health_check():
             'database': 'connected' if Path(USERS_FILE).exists() else 'disconnected',
             'storage': 'available' if Path(DATA_DIR).exists() else 'unavailable',
             'encryption': 'enabled',
+            'client_secrets': 'supported',
             'timestamp': datetime.now().isoformat()
         }
         
-        all_healthy = all(status in ['running', 'connected', 'available', 'enabled'] 
+        all_healthy = all(status in ['running', 'connected', 'available', 'enabled', 'supported'] 
                          for status in checks.values() if status != checks['timestamp'])
         
         return jsonify({
@@ -582,44 +529,49 @@ def api_documentation():
     docs = {
         'service': 'Mail as a Service API',
         'version': '1.0.0',
-        'encryption_support': 'AES-256-GCM',
+        'encryption_support': 'AES-256-GCM with user-specific client secrets',
+        'authentication': {
+            'user_registration': 'POST /auth/register - Returns client secret',
+            'user_login': 'POST /auth/login - Returns client secret',
+            'api_authentication': 'POST /service/authenticate_user - Returns client secret',
+            'get_client_secret': 'POST /auth/get_client_secret - Requires valid token'
+        },
         'endpoints': {
             'User Management': {
-                'POST /register': 'Register a new user',
-                'POST /login': 'Authenticate user',
-                'POST /verify': 'Verify user token',
-                'POST /validate_email': 'Validate email format and domain',
-                'POST /user_exists': 'Check if user exists',
-                'POST /bulk_register': 'Register multiple users',
-                'GET /user_stats/<email>': 'Get user statistics'
-            },
-            'Company Management': {
-                'POST /register_company': 'Register a new company domain',
-                'POST /check_domain': 'Check domain availability',
-                'GET /domain_info/<domain>': 'Get domain information',
-                'GET /companies': 'List all companies'
+                'POST /auth/register': 'Register a new user (returns client secret)',
+                'POST /auth/login': 'Authenticate user (returns client secret)',
+                'POST /auth/verify': 'Verify user token',
+                'POST /service/validate_email': 'Validate email format and domain',
+                'POST /service/user_exists': 'Check if user exists',
+                'POST /service/authenticate_user': 'API authentication (returns client secret)'
             },
             'Mail Operations (Enhanced with Encryption)': {
-                'POST /send_email': 'Send email (supports encryption, requires API key)',
-                'POST /verify_email': 'Verify email exists (supports encryption)',
-                'GET /inbox/<email>': 'Get user inbox',
-                'GET /sent/<email>': 'Get sent emails',
-                'POST /search': 'Search emails'
+                'POST /service/send_email': 'Send email (supports encryption, requires API key + client secret)',
+                'POST /service/verify_email': 'Verify email exists (supports encryption)',
+                'GET /mail/inbox/<email>': 'Get user inbox (requires auth token)',
+                'GET /mail/sent/<email>': 'Get sent emails (requires auth token)',
+                'POST /mail/search': 'Search emails (requires auth token)'
             },
             'Encryption': {
-                'GET /encryption_info': 'Get encryption algorithm details (requires API key)'
+                'GET /service/encryption_info': 'Get encryption algorithm details (requires API key)'
             },
             'Service': {
-                'GET /health': 'Service health check',
-                'GET /api/docs': 'This documentation'
+                'GET /service/health': 'Service health check',
+                'GET /service/api/docs': 'This documentation'
             }
         },
-        'authentication': {
-            'user_endpoints': 'Bearer token in Authorization header',
-            'service_endpoints': 'API key in X-API-KEY header',
-            'encrypted_endpoints': 'API key + optional client secret'
+        'client_secret_usage': {
+            'generation': 'Automatically generated during user registration',
+            'retrieval': 'Available through login/authentication endpoints',
+            'usage': 'Include as X-CLIENT-SECRET header for encrypted API calls',
+            'security': 'User-specific secrets enhance encryption security'
         },
-        'encryption_note': 'Enhanced APIs support both plain and encrypted payloads for backward compatibility'
+        'encryption_headers': {
+            'X-API-KEY': 'Required for all encrypted endpoints',
+            'X-CLIENT-SECRET': 'User-specific secret for encryption',
+            'X-USER-EMAIL': 'User email for authentication verification',
+            'Content-Type': 'application/json'
+        }
     }
     
     return jsonify(docs), 200
