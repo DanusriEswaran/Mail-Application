@@ -3,7 +3,13 @@ import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import "./Login.css";
 import { API_BASE_URL } from "../config";
-import { FaUser, FaEnvelope, FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
+import {
+  FaUser,
+  FaEnvelope,
+  FaEye,
+  FaEyeSlash,
+  FaSpinner,
+} from "react-icons/fa";
 
 function Register() {
   const [username, setUsername] = useState("");
@@ -80,39 +86,41 @@ function Register() {
       const res = await axios.post(`${API_BASE_URL}/auth/register`, {
         username: username.trim(),
         email: email.trim().toLowerCase(),
-        password: password
+        password: password,
       });
-
+      console.log(res);
       setMessage("✅ Registration successful! Redirecting to login...");
-      
+
       // Redirect to login page with success message
       setTimeout(() => {
-        navigate("/login", { 
-          state: { 
+        navigate("/login", {
+          state: {
             registrationSuccess: true,
-            message: "Registration successful! Please login with your credentials.",
-            email: email.trim().toLowerCase()
-          }
+            message:
+              "Registration successful! Please login with your credentials.",
+            email: email.trim().toLowerCase(),
+          },
         });
       }, 1500);
-
     } catch (error) {
       console.error("Registration error:", error);
-      
+
       let errorMessage = "Registration failed. Please try again.";
-      
+
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
       } else if (error.response?.status === 400) {
-        errorMessage = "Invalid input. Please check your details and try again.";
+        errorMessage =
+          "Invalid input. Please check your details and try again.";
       } else if (error.response?.status === 409) {
         errorMessage = "User already exists with this email address.";
       } else if (error.response?.status === 500) {
         errorMessage = "Server error. Please try again later.";
-      } else if (error.code === 'NETWORK_ERROR') {
-        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (error.code === "NETWORK_ERROR") {
+        errorMessage =
+          "Network error. Please check your connection and try again.";
       }
-      
+
       setMessage("❌ " + errorMessage);
     } finally {
       setIsRegistering(false);
@@ -123,7 +131,7 @@ function Register() {
     <div className="auth-container">
       <h2>Create Account</h2>
       <p className="subtitle">Join our mail service and start communicating</p>
-      
+
       <form onSubmit={handleRegister}>
         <div className="input-wrapper">
           <input
@@ -164,7 +172,7 @@ function Register() {
           <span
             onClick={togglePasswordVisibility}
             className="input-icon clickable"
-            style={{ cursor: isRegistering ? 'not-allowed' : 'pointer' }}
+            style={{ cursor: isRegistering ? "not-allowed" : "pointer" }}
           >
             {showPassword ? <FaEyeSlash /> : <FaEye />}
           </span>
@@ -183,30 +191,35 @@ function Register() {
           <span
             onClick={toggleConfirmPasswordVisibility}
             className="input-icon clickable"
-            style={{ cursor: isRegistering ? 'not-allowed' : 'pointer' }}
+            style={{ cursor: isRegistering ? "not-allowed" : "pointer" }}
           >
             {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
           </span>
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           disabled={isRegistering}
-          className={isRegistering ? 'button-disabled' : ''}
+          className={isRegistering ? "button-disabled" : ""}
         >
           {isRegistering ? (
             <>
-              <FaSpinner style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
+              <FaSpinner
+                style={{
+                  marginRight: "8px",
+                  animation: "spin 1s linear infinite",
+                }}
+              />
               Creating Account...
             </>
           ) : (
-            'Create Account'
+            "Create Account"
           )}
         </button>
       </form>
 
       {message && (
-        <div className={`message ${message.includes('❌') ? 'error' : ''}`}>
+        <div className={`message ${message.includes("❌") ? "error" : ""}`}>
           {message}
         </div>
       )}

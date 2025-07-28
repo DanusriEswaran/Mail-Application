@@ -25,9 +25,9 @@ const TemplateModal = ({ onClose, onSaved, token }) => {
       // ✅ CORRECT ENDPOINT - Using /template/save_template
       const res = await fetch(`${API_BASE_URL}/template/save_template`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: templateName.trim(),
@@ -35,9 +35,9 @@ const TemplateModal = ({ onClose, onSaved, token }) => {
           body: templateBody.trim(),
         }),
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok) {
         toast.success("Template saved successfully!");
         onSaved();
@@ -126,8 +126,8 @@ const TemplateModal = ({ onClose, onSaved, token }) => {
               {isSaving ? "Saving..." : "Save Template"}
             </button>
             <br />
-            <button 
-              className="cancel-btn" 
+            <button
+              className="cancel-btn"
               onClick={handleCancel}
               disabled={isSaving}
             >
