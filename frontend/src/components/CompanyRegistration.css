@@ -1,0 +1,203 @@
+/* Updated CompanyRegistration.css */
+.company-registration {
+  max-width: 480px;
+}
+
+.company-registration .subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.domain-input {
+  position: relative;
+}
+
+.domain-input input {
+  padding-right: 50px !important; /* Make room for both icons */
+}
+
+.domain-status {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  z-index: 10;
+}
+
+.domain-status.available {
+  color: #2ecc71;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.domain-status.unavailable {
+  color: #e74c3c;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.domain-status.checking {
+  color: #3498db;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: translateY(-50%) rotate(0deg); }
+  100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.message {
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 14px;
+  text-align: center;
+}
+
+.message.error {
+  background-color: rgba(231, 76, 60, 0.2);
+  color: #ffcccc;
+  border: 1px solid rgba(231, 76, 60, 0.4);
+}
+
+.button-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.button-disabled:hover {
+  background: linear-gradient(90deg, #8e44ad, #3498db) !important;
+  transform: none !important;
+}
+
+/* Enhanced input styling */
+.input-wrapper {
+  position: relative;
+  width: 100%;
+  margin: 12px 0;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 12px 40px 12px 12px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.3);
+  color: rgba(52, 51, 51, 0.9);
+  font-size: 16px;
+  backdrop-filter: blur(10px);
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+.input-wrapper input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.3);
+}
+
+.input-wrapper input::placeholder {
+  color: rgba(52, 51, 51, 0.6);
+}
+
+.input-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(52, 51, 51, 0.7);
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Button styling */
+.auth-container button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #8e44ad, #3498db);
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.auth-container button:hover:not(.button-disabled) {
+  background: linear-gradient(90deg, #732d91, #2980b9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Link styling */
+.login-link, .main-link {
+  color: #3498db;
+  font-weight: bold;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.login-link:hover, .main-link:hover {
+  color: #2980b9;
+  text-decoration: underline;
+}
+
+.auth-options {
+  margin-top: 25px;
+}
+
+.auth-options p {
+  margin: 15px 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.back-to-main {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .company-registration {
+    margin: 10px;
+    padding: 20px 15px;
+    max-width: 90%;
+  }
+  
+  .input-wrapper input {
+    padding: 10px 45px 10px 10px;
+  }
+  
+  .domain-status {
+    right: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .company-registration {
+    padding: 15px 10px;
+  }
+  
+  .message {
+    font-size: 13px;
+    padding: 8px;
+  }
+}
