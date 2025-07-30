@@ -10,7 +10,8 @@ import {
   FaBuilding,
   FaSpinner,
 } from "react-icons/fa";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -190,6 +191,14 @@ function Login() {
           </Link>
         </p>
       </div>
+      <ToastContainer
+        position="top-center"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        draggable
+        closeButton={false}
+      />
     </div>
   );
 }

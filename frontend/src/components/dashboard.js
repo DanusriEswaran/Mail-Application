@@ -436,7 +436,7 @@ const Dashboard = () => {
         <main className="gmail-main">
           {renderMainContent()}
         </main>
-      </div>
+      
 
       {showCompose && (
         <ComposeModal
@@ -470,6 +470,7 @@ const Dashboard = () => {
           token={token}
         />
       )}
+      </div>
 
       {showConfirmModal && (
         <ConfirmModal

@@ -50,7 +50,7 @@ const ComposeModal = ({
       const res = await fetch(`${API_BASE_URL}/file/upload`, {
         method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       });
@@ -84,9 +84,9 @@ const ComposeModal = ({
     try {
       const res = await fetch(`${API_BASE_URL}/mail/send`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           to: recipient.trim(),
@@ -130,9 +130,9 @@ const ComposeModal = ({
     try {
       const res = await fetch(`${API_BASE_URL}/mail/save_draft`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           to: recipient.trim(),
@@ -141,7 +141,7 @@ const ComposeModal = ({
           attachment,
         }),
       });
-      
+
       if (res.ok) {
         toast.success("Draft saved successfully!");
         onDraftSaved();
@@ -163,9 +163,9 @@ const ComposeModal = ({
     try {
       const res = await fetch(`${API_BASE_URL}/mail/delete_draft`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ draft }),
       });
@@ -196,19 +196,19 @@ const ComposeModal = ({
     }
 
     const scheduledDateTime = new Date(`${scheduleDate}T${scheduleTime}`);
-    
+
     // Check if scheduled time is in the future
     if (scheduledDateTime <= new Date()) {
       toast.error("Scheduled time must be in the future");
       return;
     }
-    
+
     try {
       const res = await fetch(`${API_BASE_URL}/mail/schedule`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           to: recipient.trim(),
@@ -307,76 +307,62 @@ const ComposeModal = ({
             <label htmlFor="file-input" className="attach-btn">
               📎 Attach files
             </label>
-            
+
             {file && (
               <div className="file-selected">
-                <span>{file.name} ({Math.round(file.size / 1024)} KB)</span>
+                <span>
+                  {file.name} ({Math.round(file.size / 1024)} KB)
+                </span>
                 <button onClick={handleFileUpload} className="upload-btn">
                   Upload
                 </button>
-                <button 
-                  onClick={() => setFile(null)} 
+                <button
+                  onClick={() => setFile(null)}
                   className="upload-btn"
-                  style={{ background: '#dc3545', marginLeft: '8px' }}
+                  style={{ marginLeft: "8px" }}
                 >
                   Remove
                 </button>
               </div>
             )}
-            
+
             {attachment && (
               <div className="attachment-preview">
                 <span className="attachment-icon">📎</span>
-                <a
-                  href={attachment}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href={attachment} target="_blank" rel="noopener noreferrer">
                   {attachment.split("/").pop()}
                 </a>
-                <button 
-                  onClick={() => setAttachment("")}
-                  style={{ 
-                    marginLeft: '12px', 
-                    background: 'none', 
-                    border: 'none', 
-                    color: '#dc3545',
-                    cursor: 'pointer',
-                    fontSize: '16px'
-                  }}
-                >
-                  ✕
-                </button>
+                <button onClick={() => setAttachment("")}>✕</button>
               </div>
             )}
           </div>
 
-          {templates && templates.length > 0 && (
-            <div className="template-selection">
-              <label>Use Template:</label>
-              <select
-                onChange={(e) => {
-                  const template = templates.find(
-                    (t) => t.name === e.target.value
-                  );
-                  if (template) {
-                    handleUseTemplate(template);
-                    e.target.value = ""; // Reset select
-                  }
-                }}
-                defaultValue=""
-              >
-                <option value="">Select a template...</option>
-                {templates.map((template, index) => (
-                  <option key={index} value={template.name}>
-                    {template.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <div className="compose-actions">
+            {templates && templates.length > 0 && (
+              <div className="template-selection">
+                <label>Use Template:</label>
+                <select
+                  onChange={(e) => {
+                    const template = templates.find(
+                      (t) => t.name === e.target.value
+                    );
+                    if (template) {
+                      handleUseTemplate(template);
+                      e.target.value = ""; // Reset select
+                    }
+                  }}
+                  defaultValue=""
+                >
+                  <option value="">Select a template...</option>
+                  {templates.map((template, index) => (
+                    <option key={index} value={template.name}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
             <button
               className="btn primary"
               onClick={handleSend}
@@ -393,8 +379,8 @@ const ComposeModal = ({
               Schedule & Send
             </button>
 
-            <button 
-              className="btn outline" 
+            <button
+              className="btn outline"
               onClick={handleSaveDraft}
               disabled={isSavingDraft}
             >
