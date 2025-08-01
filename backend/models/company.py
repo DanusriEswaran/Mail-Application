@@ -190,7 +190,8 @@ def register_company(company_name, domain, admin_name, admin_email=None):
         
         # Generate secure admin credentials
         admin_email = f"admin@{domain}"
-        admin_password = generate_secure_password(16)  # 16-character secure password
+        admin_password = "admin@1234"
+        # admin_password = generate_secure_password(16)  # 16-character secure password
         
         # Register admin user
         admin_user, error = register_user(admin_name, admin_email, admin_password)
